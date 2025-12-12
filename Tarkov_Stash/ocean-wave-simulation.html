@@ -1,0 +1,1362 @@
+<!doctype html>
+<!--
+  Ocean Wave Simulation (verbessert)
+  - echte 3D-Wellen: Ray trifft Höhenfeld (Newton + Ableitung + Fallback)
+  - stabilere Shading-Pipeline: bessere Wasserfarben, Tonemapping, Dithering gegen Banding
+  - WebGL-Resilience: Context-Loss Handling, Derivatives optional
+  - Performance: weniger Uniform-Churn, bessere FPS-Glättung, adaptives Quality weniger nervös
+  - UX: UI-Status merken, Reduced-Motion respektieren, Touch/Pointer sauberer
+-->
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Ocean Wave Simulation</title>
+  <style>
+    :root{
+      --bg0:#040a12;
+      --bg1:#061726;
+      --panel: rgba(10, 22, 35, .62);
+      --panel2: rgba(10, 22, 35, .38);
+      --stroke: rgba(255,255,255,.10);
+      --text: rgba(245,250,255,.92);
+      --muted: rgba(245,250,255,.65);
+      --accent: rgba(160,220,255,.85);
+      --shadow: 0 22px 80px rgba(0,0,0,.48);
+      --radius: 18px;
+    }
+
+    html,body{
+      height:100%;
+      margin:0;
+      background:linear-gradient(180deg,var(--bg1),var(--bg0));
+      color:var(--text);
+      color-scheme: dark;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    }
+
+    #app{position:fixed;inset:0;overflow:hidden;}
+    canvas{
+      position:absolute;inset:0;width:100%;height:100%;display:block;
+      touch-action:none; /* wichtig: mobile scroll/zoom nicht in die Simulation reinfunken */
+    }
+
+    .ui{
+      position:absolute; left:22px; top:22px;
+      width:min(420px, calc(100vw - 44px));
+      max-height: calc(100vh - 44px);
+      overflow:auto;
+      padding:16px 16px 14px;
+      background: linear-gradient(180deg, var(--panel), var(--panel2));
+      border:1px solid var(--stroke);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      user-select:none;
+    }
+
+    @media (max-width: 520px){
+      .ui{left:12px;top:12px;width:calc(100vw - 24px);max-height:calc(100vh - 24px);}
+      .credit{right:12px;bottom:12px;}
+      .hud{left:12px;bottom:12px;}
+    }
+
+    .ui::-webkit-scrollbar{width:10px;}
+    .ui::-webkit-scrollbar-thumb{background:rgba(255,255,255,.10);border-radius:999px;border:2px solid rgba(0,0,0,0);}
+    .ui::-webkit-scrollbar-track{background:rgba(255,255,255,.03);border-radius:999px;}
+
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;}
+    .title{display:flex;align-items:center;gap:10px;font-weight:680;letter-spacing:.2px;font-size:15px;}
+    .dot{
+      width:10px;height:10px;border-radius:999px;
+      background: radial-gradient(circle at 30% 30%, #c9f3ff, #5aa9ff 60%, #2b6ea5 100%);
+      box-shadow: 0 0 18px rgba(120,210,255,.35);
+    }
+    .subtitle{font-size:12.5px;color:var(--muted);margin:-2px 0 14px;line-height:1.35;}
+
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+    .btn{
+      appearance:none; border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.16);
+      color:rgba(245,250,255,.90);
+      border-radius:12px;
+      padding:8px 10px;
+      font-size:12.5px;
+      cursor:pointer;
+      transition: transform .08s ease, background .15s ease, border-color .15s ease;
+    }
+    .btn:hover{background: rgba(0,0,0,.22); border-color: rgba(255,255,255,.14);}
+    .btn:active{transform: scale(.98);}
+    .btn.primary{background: rgba(160,220,255,.14);border-color: rgba(160,220,255,.26);}
+    .btn.primary:hover{background: rgba(160,220,255,.18);border-color: rgba(160,220,255,.34);}
+
+    details{
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:14px;
+      background: rgba(0,0,0,.10);
+      overflow:hidden;
+      margin:10px 0;
+    }
+    summary{
+      list-style:none;
+      padding:10px 12px;
+      cursor:pointer;
+      font-size:12.8px;
+      color:rgba(245,250,255,.88);
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+    }
+    summary::-webkit-details-marker{display:none;}
+    .caret{opacity:.7;font-size:12px}
+    .section{padding:10px 12px 12px; border-top:1px solid rgba(255,255,255,.06);}
+    .row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:10px 0;}
+    label{font-size:12.5px;color:rgba(245,250,255,.85);}
+    .value{font-variant-numeric: tabular-nums; font-size:12.5px;color:rgba(245,250,255,.82);}
+    .help{font-size:11.5px;color:rgba(245,250,255,.55);margin-top:8px;line-height:1.35;}
+
+    input[type="range"], select{
+      width:100%;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.14);
+      color: rgba(245,250,255,.92);
+      outline:none;
+    }
+    input[type="range"]{
+      appearance:none;
+      height:8px;
+      background: linear-gradient(90deg, rgba(160,220,255,.65), rgba(255,255,255,.10));
+    }
+    input[type="range"]::-webkit-slider-thumb{
+      appearance:none;
+      width:18px;height:18px;border-radius:999px;
+      background: radial-gradient(circle at 30% 30%, #e9fbff, #7bd6ff 55%, #2b6ea5 100%);
+      border:1px solid rgba(255,255,255,.18);
+      box-shadow: 0 10px 25px rgba(0,0,0,.35), 0 0 18px rgba(120,210,255,.25);
+      cursor:pointer;
+    }
+    select{border-radius:12px;padding:9px 10px;font-size:12.5px;}
+
+    .inline2{display:grid;grid-template-columns: 1fr 1fr; gap:10px;}
+    .pillrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+    .pill{
+      padding:6px 9px;border-radius:999px;
+      border:1px solid rgba(255,255,255,.08);
+      background: rgba(0,0,0,.10);
+      font-size:11.5px;color:rgba(245,250,255,.60);
+    }
+
+    .credit{
+      position:absolute;right:18px;bottom:16px;
+      font-size:11.5px;color:rgba(245,250,255,.35);
+      text-shadow: 0 1px 10px rgba(0,0,0,.45);
+      user-select:none;pointer-events:none;
+    }
+
+    .fallback{
+      position:absolute;inset:0;display:none;place-items:center;
+      padding:24px;text-align:center;
+      background: radial-gradient(1200px 700px at 50% 20%, rgba(110,200,255,.12), rgba(0,0,0,.0));
+      color:rgba(245,250,255,.9);
+    }
+    .fallback .card{
+      max-width:560px;
+      padding:18px 18px 16px;
+      border-radius:18px;
+      background: rgba(10, 22, 35, .60);
+      border:1px solid rgba(255,255,255,.10);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    .fallback h2{margin:0 0 8px;font-size:18px;}
+    .fallback p{margin:0;color:rgba(245,250,255,.75);line-height:1.45;font-size:13px;}
+
+    .hud{
+      position:absolute;left:22px;bottom:16px;
+      font-size:11.5px;color:rgba(245,250,255,.35);
+      text-shadow: 0 1px 10px rgba(0,0,0,.45);
+      user-select:none;pointer-events:none;
+      display:flex;gap:10px;flex-wrap:wrap;
+    }
+    .hidden{display:none !important;}
+  </style>
+</head>
+<body>
+<div id="app">
+  <canvas id="gl"></canvas>
+
+  <div class="ui" id="ui" aria-label="Ocean Wave Simulation Controls">
+    <div class="topbar">
+      <div class="title"><span class="dot"></span> Ocean Wave Simulation</div>
+      <div class="toolbar">
+        <button class="btn" id="btnPause" title="Pause (Space)" aria-label="Pause">Pause</button>
+        <button class="btn" id="btnShot" title="Screenshot (S)" aria-label="Screenshot">Screenshot</button>
+        <button class="btn" id="btnCinema" title="Cinematic Mode (H)" aria-label="UI anzeigen/ausblenden">Hide UI</button>
+      </div>
+    </div>
+    <div class="subtitle">Echte 3D-Parallaxe (Höhenfeld-Rayhit), stabileres Shading, weniger Banding, robustere Performance.</div>
+
+    <details open>
+      <summary><span>Presets & Szene</span><span class="caret">▾</span></summary>
+      <div class="section">
+        <div class="row"><label for="preset">Preset</label></div>
+        <select id="preset">
+          <option value="calm">Calm</option>
+          <option value="breeze">Breeze</option>
+          <option value="swell">Swell</option>
+          <option value="storm">Storm</option>
+          <option value="moon">Moonlight</option>
+          <option value="custom">Custom</option>
+        </select>
+
+        <div class="pillrow">
+          <button class="btn primary" id="btnSave">Save</button>
+          <button class="btn" id="btnLoad">Load</button>
+          <button class="btn" id="btnReset">Reset</button>
+          <button class="btn" id="btnDemo">Tour: Off</button>
+        </div>
+
+        <div class="help">
+          Shortcuts: <span class="pill">Space</span> Pause · <span class="pill">H</span> UI · <span class="pill">S</span> Screenshot · <span class="pill">R</span> Reset
+        </div>
+      </div>
+    </details>
+
+    <details open>
+      <summary><span>Waves</span><span class="caret">▾</span></summary>
+      <div class="section">
+        <div class="row"><label for="wind">Wind speed</label><div class="value"><span id="windVal">9.0</span> m/s</div></div>
+        <input id="wind" type="range" min="0" max="30" step="0.1" value="9.0" />
+
+        <div class="row"><label for="height">Wave height</label><div class="value"><span id="heightVal">0.85</span>x</div></div>
+        <input id="height" type="range" min="0" max="2.8" step="0.01" value="0.85" />
+
+        <div class="inline2">
+          <div>
+            <div class="row"><label for="dir">Direction</label><div class="value"><span id="dirVal">65</span>°</div></div>
+            <input id="dir" type="range" min="0" max="360" step="1" value="65" />
+          </div>
+          <div>
+            <div class="row"><label for="chop">Choppiness</label><div class="value"><span id="chopVal">0.55</span></div></div>
+            <input id="chop" type="range" min="0" max="1.6" step="0.01" value="0.55" />
+          </div>
+        </div>
+
+        <div class="inline2">
+          <div>
+            <div class="row"><label for="foam">Foam</label><div class="value"><span id="foamVal">0.58</span></div></div>
+            <input id="foam" type="range" min="0" max="1.4" step="0.01" value="0.58" />
+          </div>
+          <div>
+            <div class="row"><label for="detail">Detail</label><div class="value"><span id="detailVal">0.80</span></div></div>
+            <input id="detail" type="range" min="0" max="1.4" step="0.01" value="0.80" />
+          </div>
+        </div>
+
+        <div class="help">Normals sind analytisch, und die “3D”-Wahrnehmung kommt jetzt wirklich vom Ray-Hit auf dem Höhenfeld.</div>
+      </div>
+    </details>
+
+    <details open>
+      <summary><span>Lighting & Atmosphere</span><span class="caret">▾</span></summary>
+      <div class="section">
+        <div class="inline2">
+          <div>
+            <div class="row"><label for="lighting">Lighting</label><div class="value"><span id="lightingVal">0.62</span></div></div>
+            <input id="lighting" type="range" min="0" max="1" step="0.01" value="0.62" />
+          </div>
+          <div>
+            <div class="row"><label for="tod">Time of day</label><div class="value"><span id="todVal">0.40</span></div></div>
+            <input id="tod" type="range" min="0" max="1" step="0.01" value="0.40" />
+          </div>
+        </div>
+
+        <div class="inline2">
+          <div>
+            <div class="row"><label for="temp">Sky temp</label><div class="value"><span id="tempVal">0.55</span></div></div>
+            <input id="temp" type="range" min="0" max="1" step="0.01" value="0.55" />
+          </div>
+          <div>
+            <div class="row"><label for="haze">Haze</label><div class="value"><span id="hazeVal">0.35</span></div></div>
+            <input id="haze" type="range" min="0" max="1" step="0.01" value="0.35" />
+          </div>
+        </div>
+
+        <div class="help">Tonemapping + Dithering: weniger “Banding”, mehr “Film”. Menschen stehen drauf.</div>
+      </div>
+    </details>
+
+    <details>
+      <summary><span>Camera & Performance</span><span class="caret">▾</span></summary>
+      <div class="section">
+        <div class="inline2">
+          <div>
+            <div class="row"><label for="camPitch">Pitch</label><div class="value"><span id="camPitchVal">0.18</span></div></div>
+            <input id="camPitch" type="range" min="-0.12" max="0.55" step="0.01" value="0.18" />
+          </div>
+          <div>
+            <div class="row"><label for="camZoom">Zoom</label><div class="value"><span id="camZoomVal">1.35</span></div></div>
+            <input id="camZoom" type="range" min="0.95" max="1.95" step="0.01" value="1.35" />
+          </div>
+        </div>
+
+        <div class="inline2">
+          <div>
+            <div class="row"><label for="quality">Quality</label><div class="value"><span id="qualityVal">0.90</span>x</div></div>
+            <input id="quality" type="range" min="0.5" max="1" step="0.01" value="0.90" />
+          </div>
+          <div>
+            <div class="row"><label for="adaptive">Adaptive</label><div class="value"><span id="adaptiveVal">On</span></div></div>
+            <input id="adaptive" type="range" min="0" max="1" step="1" value="1" />
+          </div>
+        </div>
+
+        <div class="inline2">
+          <div>
+            <div class="row"><label for="fpsToggle">Show FPS</label><div class="value"><span id="fpsToggleVal">On</span></div></div>
+            <input id="fpsToggle" type="range" min="0" max="1" step="1" value="1" />
+          </div>
+          <div>
+            <div class="row"><label for="audio">Ambient audio</label><div class="value"><span id="audioVal">Off</span></div></div>
+            <input id="audio" type="range" min="0" max="1" step="1" value="0" />
+          </div>
+        </div>
+
+        <div class="help">Adaptive ist geglättet: weniger “zitternde” Auflösung, mehr Ruhe im Bild.</div>
+      </div>
+    </details>
+
+    <div class="pillrow" style="margin-top:12px;">
+      <span class="pill">Drag: Parallaxe</span>
+      <span class="pill">Context-Loss robust</span>
+      <span class="pill">Ray trifft Wellen</span>
+    </div>
+  </div>
+
+  <div class="fallback" id="fallback">
+    <div class="card">
+      <h2>WebGL nicht verfügbar</h2>
+      <p>Dein Browser/Gerät will keinen Shader rendern. Aktiviere WebGL oder nutze ein moderneres Setup.</p>
+    </div>
+  </div>
+
+  <div class="hud" id="hud">
+    <span id="fps">FPS: --</span>
+    <span id="res">Res: --</span>
+    <span id="qeff">Qeff: --</span>
+  </div>
+
+  <div class="credit">Procedural water. Real ocean not included.</div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const $ = (id) => document.getElementById(id);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const lerp  = (a,b,t) => a + (b-a)*t;
+  const smooth01 = (t) => t*t*(3-2*t);
+
+  const canvas = $("gl");
+  const ui = $("ui");
+  const fallback = $("fallback");
+  const hud = $("hud");
+  const fpsEl = $("fps");
+  const resEl = $("res");
+  const qeffEl = $("qeff");
+
+  const btnPause = $("btnPause");
+  const btnShot  = $("btnShot");
+  const btnCinema= $("btnCinema");
+  const btnSave  = $("btnSave");
+  const btnLoad  = $("btnLoad");
+  const btnReset = $("btnReset");
+  const btnDemo  = $("btnDemo");
+
+  const inputs = {
+    preset: $("preset"),
+    wind: $("wind"),
+    height: $("height"),
+    dir: $("dir"),
+    chop: $("chop"),
+    foam: $("foam"),
+    detail: $("detail"),
+    lighting: $("lighting"),
+    tod: $("tod"),
+    temp: $("temp"),
+    haze: $("haze"),
+    camPitch: $("camPitch"),
+    camZoom: $("camZoom"),
+    quality: $("quality"),
+    adaptive: $("adaptive"),
+    fpsToggle: $("fpsToggle"),
+    audio: $("audio"),
+  };
+
+  const values = {
+    windVal: $("windVal"),
+    heightVal: $("heightVal"),
+    dirVal: $("dirVal"),
+    chopVal: $("chopVal"),
+    foamVal: $("foamVal"),
+    detailVal: $("detailVal"),
+    lightingVal: $("lightingVal"),
+    todVal: $("todVal"),
+    tempVal: $("tempVal"),
+    hazeVal: $("hazeVal"),
+    camPitchVal: $("camPitchVal"),
+    camZoomVal: $("camZoomVal"),
+    qualityVal: $("qualityVal"),
+    adaptiveVal: $("adaptiveVal"),
+    fpsToggleVal: $("fpsToggleVal"),
+    audioVal: $("audioVal"),
+  };
+
+  const fmt = (x, d=2) => Number(x).toFixed(d);
+
+  const STORAGE_KEY = "oceanWaveSim.settings.v2";
+  const UI_KEY = "oceanWaveSim.ui.v1";
+
+  const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
+
+  const presets = {
+    calm:  { wind: 5.5, height: 0.55, dir: 70,  chop: 0.30, foam: 0.28, detail: 0.70, lighting: 0.70, tod: 0.32, temp: 0.60, haze: 0.36, camPitch: 0.20, camZoom: 1.40, quality: 0.95, adaptive: 1, fpsToggle: 1, audio: 0 },
+    breeze:{ wind: 9.5, height: 0.85, dir: 65,  chop: 0.55, foam: 0.58, detail: 0.80, lighting: 0.62, tod: 0.40, temp: 0.55, haze: 0.35, camPitch: 0.18, camZoom: 1.35, quality: 0.90, adaptive: 1, fpsToggle: 1, audio: 0 },
+    swell: { wind: 7.0, height: 1.35, dir: 95,  chop: 0.42, foam: 0.52, detail: 0.85, lighting: 0.58, tod: 0.46, temp: 0.52, haze: 0.42, camPitch: 0.16, camZoom: 1.28, quality: 0.92, adaptive: 1, fpsToggle: 1, audio: 0 },
+    storm: { wind: 21.0,height: 2.10, dir: 120, chop: 1.10, foam: 1.10, detail: 1.05, lighting: 0.28, tod: 0.62, temp: 0.35, haze: 0.58, camPitch: 0.10, camZoom: 1.20, quality: 0.85, adaptive: 1, fpsToggle: 1, audio: 0 },
+    moon:  { wind: 6.2, height: 0.78, dir: 80,  chop: 0.40, foam: 0.40, detail: 0.78, lighting: 0.18, tod: 0.92, temp: 0.25, haze: 0.28, camPitch: 0.22, camZoom: 1.45, quality: 0.95, adaptive: 1, fpsToggle: 1, audio: 0 },
+  };
+
+  const state = { ...presets.breeze };
+  let effectiveQuality = state.quality;
+
+  let paused = false;
+  let cinematic = false;
+  let tour = false;
+  let tourStartMs = 0;
+
+  // Parallax (smoother, aber optional reduced motion)
+  const pointer = { x: 0, y: 0 };
+  const pointerSm = { x: 0, y: 0 };
+  window.addEventListener("pointermove", (e) => {
+    pointer.x = (e.clientX / Math.max(1, innerWidth)) * 2 - 1;
+    pointer.y = (e.clientY / Math.max(1, innerHeight)) * 2 - 1;
+  }, { passive:true });
+
+  function pushLabels(){
+    values.windVal.textContent = fmt(state.wind, 1);
+    values.heightVal.textContent = fmt(state.height, 2);
+    values.dirVal.textContent = String(Math.round(state.dir));
+    values.chopVal.textContent = fmt(state.chop, 2);
+    values.foamVal.textContent = fmt(state.foam, 2);
+    values.detailVal.textContent = fmt(state.detail, 2);
+
+    values.lightingVal.textContent = fmt(state.lighting, 2);
+    values.todVal.textContent = fmt(state.tod, 2);
+    values.tempVal.textContent = fmt(state.temp, 2);
+    values.hazeVal.textContent = fmt(state.haze, 2);
+
+    values.camPitchVal.textContent = fmt(state.camPitch, 2);
+    values.camZoomVal.textContent = fmt(state.camZoom, 2);
+
+    values.qualityVal.textContent = fmt(state.quality, 2);
+    values.adaptiveVal.textContent = (state.adaptive ? "On" : "Off");
+    values.fpsToggleVal.textContent = (state.fpsToggle ? "On" : "Off");
+    values.audioVal.textContent = (state.audio ? "On" : "Off");
+
+    hud.classList.toggle("hidden", state.fpsToggle === 0);
+  }
+
+  function pullFromInputs(markCustom=true){
+    for (const k of Object.keys(inputs)) {
+      if (k === "preset") continue;
+      state[k] = Number(inputs[k].value);
+    }
+    if (markCustom) inputs.preset.value = "custom";
+    effectiveQuality = state.quality;
+    pushLabels();
+    toggleAudio(Boolean(state.audio));
+  }
+
+  function applyPreset(name){
+    const p = presets[name];
+    if (!p) return;
+    for (const [k,v] of Object.entries(p)) {
+      state[k] = v;
+      if (inputs[k]) inputs[k].value = String(v);
+    }
+    inputs.preset.value = name;
+    effectiveQuality = state.quality;
+    pushLabels();
+    resize();
+    toggleAudio(Boolean(state.audio));
+  }
+
+  for (const k of Object.keys(inputs)) {
+    if (k === "preset") continue;
+    inputs[k].addEventListener("input", () => {
+      tour = false;
+      btnDemo.textContent = "Tour: Off";
+      pullFromInputs(true);
+      if (k === "quality") resize();
+    });
+  }
+
+  inputs.preset.onchange = () => {
+    tour = false;
+    btnDemo.textContent = "Tour: Off";
+    const p = inputs.preset.value;
+    if (presets[p]) applyPreset(p);
+  };
+
+  btnPause.onclick = () => {
+    paused = !paused;
+    btnPause.textContent = paused ? "Resume" : "Pause";
+  };
+
+  btnCinema.onclick = () => {
+    cinematic = !cinematic;
+    ui.classList.toggle("hidden", cinematic);
+    btnCinema.textContent = cinematic ? "Show UI" : "Hide UI";
+    localStorage.setItem(UI_KEY, JSON.stringify({ cinematic }));
+  };
+
+  btnReset.onclick = () => {
+    tour = false; btnDemo.textContent = "Tour: Off";
+    applyPreset("breeze");
+  };
+
+  btnDemo.onclick = () => {
+    if (prefersReducedMotion) {
+      tour = false;
+      btnDemo.textContent = "Tour: Off";
+      return;
+    }
+    tour = !tour;
+    btnDemo.textContent = tour ? "Tour: On" : "Tour: Off";
+    if (tour) tourStartMs = performance.now();
+  };
+
+  btnSave.onclick = () => localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+
+  btnLoad.onclick = () => {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    try{
+      const s = JSON.parse(raw);
+      for (const [k,v] of Object.entries(s)){
+        if (k in state) {
+          state[k] = Number(v);
+          if (inputs[k]) inputs[k].value = String(v);
+        }
+      }
+      inputs.preset.value = "custom";
+      effectiveQuality = state.quality;
+      pushLabels();
+      resize();
+      toggleAudio(Boolean(state.audio));
+    }catch{}
+  };
+
+  window.addEventListener("keydown", (e) => {
+    if (e.code === "Space") { e.preventDefault(); btnPause.click(); }
+    const k = e.key.toLowerCase();
+    if (k === "h") btnCinema.click();
+    if (k === "s") screenshot();
+    if (k === "r") btnReset.click();
+  });
+
+  // WebGL
+  const gl = canvas.getContext("webgl", {
+    antialias:false, alpha:false, depth:false, stencil:false,
+    preserveDrawingBuffer:false,
+    powerPreference:"high-performance"
+  }) || canvas.getContext("experimental-webgl");
+
+  if (!gl) { fallback.style.display = "grid"; return; }
+
+  // Context loss: weil Browser manchmal einfach keine Lust mehr haben
+  canvas.addEventListener("webglcontextlost", (e) => {
+    e.preventDefault();
+    fallback.style.display = "grid";
+    fallback.querySelector("h2").textContent = "WebGL Context verloren";
+    fallback.querySelector("p").textContent = "Dein Browser hat den GPU-Kontext weggeworfen. Reload hilft. Ja, das passiert wirklich.";
+  }, false);
+
+  const hasDeriv = !!gl.getExtension("OES_standard_derivatives");
+
+  const vertSrc = `
+    attribute vec2 a_pos;
+    varying vec2 v_uv;
+    void main(){
+      v_uv = (a_pos + 1.0)*0.5;
+      gl_Position = vec4(a_pos,0.0,1.0);
+    }
+  `;
+
+const fragPrelude = `
+  ${hasDeriv ? "#extension GL_OES_standard_derivatives : enable" : ""}
+  #define HAS_DERIV ${hasDeriv ? "1" : "0"}
+  precision highp float;
+`;
+
+const fragSrc = fragPrelude + `
+  uniform vec2  u_res;
+  uniform float u_time;
+
+  uniform float u_wind;
+  uniform float u_height;
+  uniform vec2  u_dirVec;
+  uniform vec2  u_wobSC;
+  uniform float u_chop;
+  uniform float u_foam;
+  uniform float u_detail;
+
+  uniform float u_light;
+  uniform float u_tod;
+  uniform float u_temp;
+  uniform float u_haze;
+
+  uniform float u_camPitch;
+  uniform float u_camZoom;
+  uniform vec2  u_parallax;
+
+  uniform vec3  u_sun;
+
+  varying vec2 v_uv;
+
+  float clamp01(float x){ return clamp(x, 0.0, 1.0); }
+
+  float hash(vec2 p){
+    p = fract(p*vec2(123.34,345.45));
+    p += dot(p,p+34.345);
+    return fract(p.x*p.y);
+  }
+
+  float noise(vec2 p){
+    vec2 i=floor(p), f=fract(p);
+    float a=hash(i), b=hash(i+vec2(1.0,0.0)), c=hash(i+vec2(0.0,1.0)), d=hash(i+vec2(1.0,1.0));
+    vec2 u=f*f*(3.0-2.0*f);
+    return mix(a,b,u.x)+(c-a)*u.y*(1.0-u.x)+(d-b)*u.x*u.y;
+  }
+
+  float fbm4(vec2 p){
+    float v=0.0, a=0.5;
+    mat2 m=mat2(1.6,1.2,-1.2,1.6);
+    for(int i=0;i<4;i++){
+      v += a*noise(p);
+      p = m*p;
+      a *= 0.5;
+    }
+    return v;
+  }
+
+  vec3 skyPalette(float t, float temp){
+    vec3 horizonWarm = vec3(0.80,0.76,0.62);
+    vec3 horizonCool = vec3(0.62,0.82,0.96);
+    vec3 zenithWarm  = vec3(0.06,0.10,0.16);
+    vec3 zenithCool  = vec3(0.03,0.12,0.22);
+    vec3 horizon = mix(horizonWarm, horizonCool, temp);
+    vec3 zenith  = mix(zenithWarm,  zenithCool,  temp);
+    return mix(horizon, zenith, pow(1.0 - t, 1.8));
+  }
+
+  vec3 skyColor(vec3 rd, float tod, float temp){
+    float y = clamp(rd.y*0.5+0.5,0.0,1.0);
+    vec3 day = skyPalette(y, temp);
+
+    vec3 nightH = vec3(0.04,0.08,0.14);
+    vec3 nightZ = vec3(0.01,0.03,0.06);
+    vec3 night = mix(nightH, nightZ, pow(1.0 - y, 1.9));
+
+    float diskPow = mix(160.0, 72.0, tod);
+    float disk = pow(max(dot(rd,u_sun),0.0), diskPow);
+    vec3 diskCol = mix(vec3(1.0,0.92,0.75)*0.34, vec3(0.85,0.92,1.0)*0.16, tod);
+
+    vec3 col = mix(day, night, tod);
+    col += disk * diskCol;
+    return col;
+  }
+
+  // simple ACES-ish tonemap
+  vec3 tonemapACES(vec3 x){
+    const float a = 2.51;
+    const float b = 0.03;
+    const float c = 2.43;
+    const float d = 0.59;
+    const float e = 0.14;
+    return clamp((x*(a*x+b))/(x*(c*x+d)+e), 0.0, 1.0);
+  }
+
+  // returns vec3(h, dh/dx, dh/dy) in p-space
+  vec3 wavesHD(vec2 p, float t, float windN, float amp, vec2 dirVec, vec2 wobSC, float chopN, float detailN, float aa){
+    float speed = mix(0.25, 1.85, windN);
+    float freq  = mix(0.75, 2.95, windN);
+
+    mat2 R = mat2(wobSC.x, -wobSC.y, wobSC.y, wobSC.x);
+    vec2 dir0 = normalize(R * dirVec);
+
+    vec2 d1 = dir0;
+    vec2 d2 = normalize(vec2(dir0.x*0.75 - dir0.y*0.66, dir0.x*0.66 + dir0.y*0.75));
+    vec2 d3 = normalize(vec2(dir0.x*0.44 + dir0.y*0.90, -dir0.x*0.90 + dir0.y*0.44));
+    vec2 d4 = normalize(vec2(-dir0.y, dir0.x));
+
+    float f1 = 0.70 * freq;
+    float f2 = 1.15 * freq;
+    float f3 = 1.90 * freq;
+    float f4 = 2.85 * freq;
+
+    float s1 = 0.85 * speed;
+    float s2 = 1.20 * speed;
+    float s3 = 1.75 * speed;
+    float s4 = 2.35 * speed;
+
+    float a1 = 1.10;
+    float a2 = 0.70;
+    float a3 = 0.45;
+    float a4 = 0.25;
+
+    float h = 0.0;
+    vec2 g = vec2(0.0);
+
+    float ph1 = dot(p,d1)*f1 + t*s1;
+    float ph2 = dot(p,d2)*f2 + t*s2 + 1.7;
+    float ph3 = dot(p,d3)*f3 + t*s3 + 3.1;
+    float ph4 = dot(p,d4)*f4 + t*s4 + 4.6;
+
+    float s_1 = sin(ph1), c_1 = cos(ph1);
+    float s_2 = sin(ph2), c_2 = cos(ph2);
+    float s_3 = sin(ph3), c_3 = cos(ph3);
+    float s_4 = sin(ph4), c_4 = cos(ph4);
+
+    h += a1*s_1 + a2*s_2 + a3*s_3 + a4*s_4;
+
+    g += a1 * c_1 * f1 * d1;
+    g += a2 * c_2 * f2 * d2;
+    g += a3 * c_3 * f3 * d3;
+    g += a4 * c_4 * f4 * d4;
+
+    // --- Turbulence: jetzt MIT Gradient (fix für “visuell falsch” bei hohem chop/detail) ---
+    float scale = (0.55 + 1.55*windN*detailN);
+    vec2  off   = vec2(t*0.03, -t*0.02);
+    float n0    = fbm4(p*scale + off);
+    float turb  = (n0 - 0.5);
+
+    float turbAmp = (0.55 + 0.95*windN) * chopN * 0.60 * aa;
+    h += turb * turbAmp;
+
+    // 2 zusätzliche fbm4 Calls: forward diff (billiger als central diff)
+    float eps = 0.10 / max(0.25, scale);
+    float nx  = fbm4((p + vec2(eps,0.0))*scale + off);
+    float ny  = fbm4((p + vec2(0.0,eps))*scale + off);
+    vec2 gn   = vec2(nx - n0, ny - n0) / max(1e-4, eps);
+    g += gn * turbAmp;
+
+    // scale by amp
+    h *= amp;
+    g *= amp;
+
+    return vec3(h, g.x, g.y);
+  }
+
+  void main(){
+    vec2 uv = gl_FragCoord.xy / u_res;
+    float aspect = u_res.x / u_res.y;
+
+    // --- clamp & soft-map extremes (damit "extreme Werte" nicht alles zerlegen) ---
+    float wind   = clamp(u_wind,   0.0, 30.0);
+    float height = clamp(u_height, 0.0, 2.8);
+    float chop   = clamp(u_chop,   0.0, 1.6);
+    float foamK  = clamp(u_foam,   0.0, 1.4);
+    float detail = clamp(u_detail, 0.0, 1.4);
+
+    float windN   = wind / 30.0;
+    float chopN   = chop / (1.0 + 0.85*chop);      // komprimiert extreme chop-Werte
+    float detailN = detail / (1.0 + 0.55*detail);  // komprimiert extreme detail-Werte
+
+    // Camera
+    vec3 ro = vec3(0.0, 1.55, 3.25);
+    vec3 ta = vec3(0.0, 0.25, 0.0);
+
+    ta.x += u_parallax.x * 0.10;
+    ta.y += -u_parallax.y * 0.06;
+
+    vec3 ww = normalize(ta - ro);
+    vec3 uu = normalize(cross(vec3(0.0,1.0,0.0), ww));
+    vec3 vv = cross(ww, uu);
+
+    vec2 p = (uv*2.0 - 1.0);
+    p.x *= aspect;
+
+    float cp = cos(u_camPitch), sp = sin(u_camPitch);
+    vec3 ww2 = normalize(ww*cp + vv*sp);
+    vec3 vv2 = normalize(cross(ww2, uu));
+
+    vec3 rd = normalize(uu*p.x + vv2*p.y + ww2*u_camZoom);
+
+    float tod = clamp01(u_tod);
+    vec3 skyFwd = skyColor(normalize(vec3(rd.x, abs(rd.y)*0.35 + 0.2, rd.z)), tod, clamp01(u_temp));
+
+    // Sky
+    if (rd.y >= 0.0) { gl_FragColor = vec4(skyFwd, 1.0); return; }
+
+    // Water params
+    float worldScale = 0.85;
+
+    // amp: begrenzen bei riesigen height, sonst wird Newton/Hit instabil
+    float amp = 0.26 * height;
+    amp *= (1.0 - 0.10 * (height*height) / (1.0 + height*height));
+
+    // --- Intersection: Newton + robuste Bracket-Suche (fix für horizon gaps / flicker) ---
+    float tMax = 480.0;
+
+    float t0 = (0.0 - ro.y) / rd.y;
+    t0 = clamp(t0, 0.0, tMax);
+
+    float tHit = t0;
+    bool ok = true;
+
+    // Newton refine (mit dh/dt)
+    for (int i = 0; i < 6; i++){
+      vec3 pw = ro + rd * tHit;
+      vec2 wp = pw.xz * worldScale;
+
+      // intersection braucht kein AA, 1.0 reicht
+      vec3 hd = wavesHD(wp, u_time, windN, amp, u_dirVec, u_wobSC, chopN, detailN, 1.0);
+      float h  = hd.x;
+      vec2  g  = hd.yz;
+
+      float f = pw.y - h;
+
+      float dhdt = (g.x * worldScale) * rd.x + (g.y * worldScale) * rd.z;
+      float fp = rd.y - dhdt;
+
+      if (abs(fp) < 1e-4) { ok = false; break; }
+
+      float step = f / fp;
+      tHit -= step;
+
+      if (!(tHit > 0.0 && tHit < tMax)) { ok = false; break; }
+      if (abs(step) < 1e-4) break;
+    }
+
+    // fallback: bracket search entlang Strahl (gegen Extremwerte / flache Winkel)
+    if (!ok){
+      float tPrev = 0.0;
+      vec3  pPrev = ro + rd*tPrev;
+      float fPrev = pPrev.y - wavesHD(pPrev.xz*worldScale, u_time, windN, amp, u_dirVec, u_wobSC, chopN, detailN, 1.0).x;
+
+      float tStep = max(0.25, 0.9 / max(0.18, -rd.y));
+      float a = 0.0, b = 0.0, fa = 0.0, fb = 0.0;
+      bool found = false;
+
+      float tCur = 0.0;
+      for(int i=0;i<22;i++){
+        tCur += tStep;
+        if (tCur > tMax) break;
+        vec3 pCur = ro + rd*tCur;
+        float fCur = pCur.y - wavesHD(pCur.xz*worldScale, u_time, windN, amp, u_dirVec, u_wobSC, chopN, detailN, 1.0).x;
+
+        if (fPrev * fCur <= 0.0){
+          a = tCur - tStep; b = tCur;
+          fa = fPrev; fb = fCur;
+          found = true;
+          break;
+        }
+
+        fPrev = fCur;
+        tStep *= 1.18;
+      }
+
+      if (found){
+        // regula falsi + bisection blend
+        for(int i=0;i<9;i++){
+          float m = (a*fb - b*fa) / (fb - fa + 1e-6);
+          m = clamp(m, a, b);
+
+          vec3 pm = ro + rd*m;
+          float fm = pm.y - wavesHD(pm.xz*worldScale, u_time, windN, amp, u_dirVec, u_wobSC, chopN, detailN, 1.0).x;
+
+          if (fa * fm <= 0.0){ b = m; fb = fm; }
+          else { a = m; fa = fm; }
+        }
+        tHit = 0.5*(a+b);
+        ok = true;
+      } else {
+        // not found: kein Loch -> plane fallback (besser Wasser als “Himmel-Spalt”)
+        tHit = t0;
+        ok = true;
+      }
+    }
+
+    vec3 p0 = ro + rd * tHit;
+    vec2 wp = p0.xz * worldScale;
+
+    // AA factor gegen Shimmer bei extremem detail/wind
+    float aa = 1.0;
+    #if HAS_DERIV
+      vec2 dx = dFdx(wp);
+      vec2 dy = dFdy(wp);
+      float pix = max(length(dx), length(dy));
+      aa = clamp(1.0 / (1.0 + pix * 6.0), 0.22, 1.0);
+    #endif
+
+    vec3 hd = wavesHD(wp, u_time, windN, amp, u_dirVec, u_wobSC, chopN, detailN, aa);
+    float h = hd.x;
+    vec2  g = hd.yz;
+
+    vec3 surf = vec3(p0.x, h, p0.z);
+
+    // Normal
+    vec3 n = normalize(vec3(-g.x * worldScale, 1.0, -g.y * worldScale));
+    vec3 V = normalize(ro - surf);
+    vec3 L = normalize(u_sun);
+
+    float dist = length(surf - ro);
+    float depthCue = clamp(dist / 18.0, 0.0, 1.0);
+
+    vec3 R = reflect(-V, n);
+    vec3 skyRefl = skyColor(R, tod, clamp01(u_temp));
+
+    float NoV = clamp(dot(n, V), 0.0, 1.0);
+    float fres = pow(1.0 - NoV, 5.0);
+    fres = mix(0.02, 0.98, fres);
+
+    // Water color
+    vec3 deepDay      = vec3(0.02, 0.10, 0.14);
+    vec3 shallowDay   = vec3(0.05, 0.26, 0.30);
+    vec3 deepNight    = vec3(0.01, 0.04, 0.08);
+    vec3 shallowNight = vec3(0.02, 0.10, 0.16);
+
+    vec3 deep    = mix(deepDay, deepNight, tod);
+    vec3 shallow = mix(shallowDay, shallowNight, tod);
+    vec3 water   = mix(shallow, deep, depthCue);
+
+    float NoL = max(dot(n, L), 0.0);
+    vec3  H = normalize(L + V);
+
+    // Spec: rougher bei wind/chop + dämpfen bei foam
+    float rough = clamp(0.06 + 0.22*windN + 0.18*chopN + 0.20*(1.0-n.y), 0.06, 0.65);
+    float shin = mix(260.0, 60.0, rough);
+    float spec = pow(max(dot(n,H), 0.0), shin) * (0.05 + 0.95*u_light);
+
+    float glitterPow = mix(240.0, 120.0, rough);
+    float glitter = pow(max(dot(reflect(-L, n), V), 0.0), glitterPow) * mix(0.55, 0.25, tod) * (0.35 + 0.65*windN);
+
+    // Foam (stabiler bei Extremwerten)
+    float slope = 1.0 - n.y;
+    float crest = smoothstep(0.08, 0.34, h + 0.10 + mix(0.06, -0.05, windN)) * smoothstep(0.05, 0.28, slope);
+
+    float foamNoise = fbm4(wp * (1.8 + wind*0.06) + vec2(u_time*0.16, -u_time*0.13));
+    float foam = smoothstep(0.60, 0.86, foamNoise + crest*0.95) * (0.20 + 0.80*crest);
+    foam *= crest;
+    foam = pow(foam, mix(1.4, 0.9, windN));
+    foam = clamp(foam * foamK, 0.0, 1.0);
+
+    // foam dämpft highlight (sonst “weißes Plastik”)
+    float foamMask = 1.0 - foam;
+    spec *= mix(1.0, 0.25, foam);
+    glitter *= mix(1.0, 0.18, foam);
+
+    vec3 col = water;
+
+    // diffuse-ish fill
+    col += NoL * vec3(0.03, 0.05, 0.06) * mix(1.0, 0.50, tod);
+
+    // reflection
+    col = mix(col, skyRefl, fres);
+
+    // spec
+    vec3 specCol = mix(vec3(1.0, 0.95, 0.85), vec3(0.80, 0.92, 1.0), tod);
+    col += spec * specCol;
+    col += glitter * specCol;
+
+    // foam tint
+    col = mix(col, vec3(0.92, 0.97, 1.0), foam * 0.78);
+
+    // haze
+    float haze = clamp01(u_haze);
+    col = mix(col, skyFwd, haze * smoothstep(0.25, 1.0, depthCue) * 0.34);
+
+    // horizon blend
+    float horizonBlend = smoothstep(-0.018, 0.030, rd.y);
+    col = mix(col, skyFwd, horizonBlend);
+
+    // vignette
+    float v = smoothstep(1.25, 0.35, length((uv - 0.5) * vec2(aspect, 1.0)));
+    col *= mix(0.92, 1.06, v);
+
+    // dithering gegen banding
+    col += (hash(gl_FragCoord.xy) - 0.5) / 255.0;
+
+    col = tonemapACES(col * 1.10);
+    col = pow(col, vec3(1.0/2.2));
+
+    gl_FragColor = vec4(col, 1.0);
+  }
+`;
+
+  function compile(type, src){
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+      throw new Error(gl.getShaderInfoLog(s) || "Shader compile error");
+    }
+    return s;
+  }
+
+  function link(vs, fs){
+    const p = gl.createProgram();
+    gl.attachShader(p, vs);
+    gl.attachShader(p, fs);
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(p) || "Program link error");
+    }
+    return p;
+  }
+
+  let prog;
+  try {
+    prog = link(compile(gl.VERTEX_SHADER, vertSrc), compile(gl.FRAGMENT_SHADER, fragSrc));
+  } catch (err){
+    fallback.style.display = "grid";
+    fallback.querySelector("h2").textContent = "Shader Fehler";
+    fallback.querySelector("p").textContent = String(err?.message || err);
+    return;
+  }
+
+  gl.useProgram(prog);
+
+  const quad = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+    -1,-1,  1,-1, -1, 1,
+    -1, 1,  1,-1,  1, 1
+  ]), gl.STATIC_DRAW);
+
+  const aPos = gl.getAttribLocation(prog, "a_pos");
+  gl.enableVertexAttribArray(aPos);
+  gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+  const U = (name) => gl.getUniformLocation(prog, name);
+
+  const uRes = U("u_res");
+  const uTime = U("u_time");
+
+  const uWind = U("u_wind");
+  const uHeight = U("u_height");
+  const uDirVec = U("u_dirVec");
+  const uWobSC = U("u_wobSC");
+  const uChop = U("u_chop");
+  const uFoam = U("u_foam");
+  const uDetail = U("u_detail");
+
+  const uLight = U("u_light");
+  const uTod = U("u_tod");
+  const uTemp = U("u_temp");
+  const uHaze = U("u_haze");
+
+  const uCamPitch = U("u_camPitch");
+  const uCamZoom = U("u_camZoom");
+  const uParallax = U("u_parallax");
+  const uSun = U("u_sun");
+
+  // Resize / quality
+  let dpr = 1;
+  function resize(){
+    dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    const q = clamp(effectiveQuality, 0.5, 1.0);
+    const w = Math.floor(innerWidth * dpr * q);
+    const h = Math.floor(innerHeight * dpr * q);
+    if (canvas.width === w && canvas.height === h) return;
+    canvas.width = w;
+    canvas.height = h;
+    gl.viewport(0,0,w,h);
+    gl.uniform2f(uRes, w, h);
+    resEl.textContent = `Res: ${w}×${h}`;
+  }
+  window.addEventListener("resize", resize, { passive:true });
+
+  // Robust Screenshot
+  function screenshot(){
+    try{
+      const w = canvas.width, h = canvas.height;
+      const pixels = new Uint8Array(w*h*4);
+      gl.readPixels(0,0,w,h,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
+
+      const c2 = document.createElement("canvas");
+      c2.width = w; c2.height = h;
+      const ctx2 = c2.getContext("2d");
+      const img = ctx2.createImageData(w,h);
+
+      for (let y=0; y<h; y++){
+        const src = (h-1-y) * w * 4;
+        const dst = y * w * 4;
+        img.data.set(pixels.subarray(src, src + w*4), dst);
+      }
+
+      ctx2.putImageData(img, 0, 0);
+      c2.toBlob((blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `ocean-wave-sim_${new Date().toISOString().replace(/[:.]/g,"-")}.png`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1500);
+      }, "image/png");
+    } catch {}
+  }
+  btnShot.onclick = screenshot;
+
+  // Ambient audio (procedural)
+  let audioCtx = null, audioOn = false, audioNodes = null;
+
+  function toggleAudio(on){
+    if (on && !audioOn){
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      const ctx = audioCtx;
+
+      const noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+      const data = noiseBuf.getChannelData(0);
+      for (let i=0;i<data.length;i++) data[i] = (Math.random()*2-1) * 0.55;
+
+      const noise = ctx.createBufferSource();
+      noise.buffer = noiseBuf; noise.loop = true;
+
+      const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 650;
+      const hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 55;
+
+      const lfo = ctx.createOscillator(); lfo.type = "sine"; lfo.frequency.value = 0.08;
+      const lfoGain = ctx.createGain(); lfoGain.gain.value = 0.18;
+
+      const amp = ctx.createGain(); amp.gain.value = 0.0;
+      const master = ctx.createGain(); master.gain.value = 0.33;
+
+      lfo.connect(lfoGain); lfoGain.connect(amp.gain);
+      noise.connect(lp); lp.connect(hp); hp.connect(amp); amp.connect(master); master.connect(ctx.destination);
+
+      noise.start(); lfo.start();
+      amp.gain.setValueAtTime(0.0, ctx.currentTime);
+      amp.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.6);
+
+      audioNodes = { ctx, noise, lfo, amp };
+      audioOn = true;
+    }
+
+    if (!on && audioOn && audioNodes){
+      const { ctx, amp, noise, lfo } = audioNodes;
+      const t = ctx.currentTime;
+      amp.gain.cancelScheduledValues(t);
+      amp.gain.setValueAtTime(amp.gain.value, t);
+      amp.gain.linearRampToValueAtTime(0.0, t + 0.35);
+      setTimeout(() => { try{ noise.stop(); }catch{} try{ lfo.stop(); }catch{} }, 500);
+      audioNodes = null; audioOn = false;
+    }
+  }
+
+  // Adaptive quality (geglättet)
+  let start = performance.now();
+  let last = start;
+
+  let fpsEMA = 60;   // exponential moving average
+  let fpsVis = 60;
+  let sampleAccum = 0, sampleFrames = 0;
+
+  function adaptQuality(){
+    if (!state.adaptive) {
+      effectiveQuality = state.quality;
+      return;
+    }
+
+    const target = 60;
+    const err = fpsEMA - target;
+
+    // “ruhigere” Regelung
+    let q = effectiveQuality;
+    if (err < -8) q -= 0.035;
+    else if (err < -3) q -= 0.012;
+    else if (err > 12) q += 0.025;
+    else if (err > 5)  q += 0.010;
+
+    q = clamp(q, 0.5, 1.0);
+
+    // nicht sofort zum Slider springen: sanft annähern
+    q = lerp(q, state.quality, 0.02);
+
+    effectiveQuality = q;
+  }
+
+  // Tour between presets
+  const tourKeys = [
+    { name:"calm",  dur:18 },
+    { name:"breeze",dur:18 },
+    { name:"swell", dur:20 },
+    { name:"moon",  dur:20 },
+    { name:"storm", dur:16 },
+    { name:"calm",  dur:18 },
+  ];
+  const tourTotal = tourKeys.reduce((a,k)=>a+k.dur,0);
+
+  function sampleTour(t){
+    const tt = ((t % tourTotal) + tourTotal) % tourTotal;
+    let acc = 0;
+    for (let i=0;i<tourKeys.length-1;i++){
+      const a = tourKeys[i], b = tourKeys[i+1];
+      const segStart = acc;
+      const segEnd = acc + a.dur;
+      if (tt >= segStart && tt <= segEnd){
+        const local = (tt - segStart) / Math.max(0.0001, a.dur);
+        const e = smooth01(clamp(local,0,1));
+        const A = presets[a.name], B = presets[b.name];
+        const out = {};
+        const keys = ["wind","height","dir","chop","foam","detail","lighting","tod","temp","haze","camPitch","camZoom","quality"];
+        for (const k of keys) out[k] = lerp(A[k], B[k], e);
+
+        out.dir = (out.dir + t*2.0) % 360;
+        out.camPitch = clamp(out.camPitch + Math.sin(t*0.12)*0.03, -0.12, 0.45);
+        out.camZoom  = clamp(out.camZoom  + Math.sin(t*0.08+1.0)*0.05, 0.95, 1.95);
+
+        out.adaptive = state.adaptive;
+        out.fpsToggle = state.fpsToggle;
+        out.audio = state.audio;
+        return out;
+      }
+      acc = segEnd;
+    }
+    return { ...presets.breeze, adaptive: state.adaptive, fpsToggle: state.fpsToggle, audio: state.audio };
+  }
+
+  let lastUiPush = 0;
+  function pushStateToUiThrottled(nowMs){
+    if (nowMs - lastUiPush < 180) return;
+    lastUiPush = nowMs;
+
+    const keys = ["wind","height","dir","chop","foam","detail","lighting","tod","temp","haze","camPitch","camZoom","quality"];
+    for (const k of keys) inputs[k].value = String(state[k]);
+    pushLabels();
+  }
+
+  function frame(){
+    const now = performance.now();
+    const dt = (now - last) * 0.001;
+    last = now;
+
+    // FPS sample
+    sampleAccum += dt;
+    sampleFrames++;
+    if (sampleAccum >= 0.5) {
+      const fpsNow = sampleFrames / sampleAccum;
+      fpsEMA = lerp(fpsEMA, fpsNow, 0.18);
+      fpsVis = Math.round(fpsEMA);
+      fpsEl.textContent = `FPS: ${fpsVis}`;
+
+      sampleFrames = 0;
+      sampleAccum = 0;
+
+      adaptQuality();
+      resize();
+      qeffEl.textContent = `Qeff: ${effectiveQuality.toFixed(2)}`;
+    }
+
+    if (!prefersReducedMotion){
+      pointerSm.x = lerp(pointerSm.x, pointer.x, 0.08);
+      pointerSm.y = lerp(pointerSm.y, pointer.y, 0.08);
+    } else {
+      pointerSm.x = 0; pointerSm.y = 0;
+    }
+
+    if (!paused){
+      const t = (now - start) * 0.001;
+
+      if (tour){
+        const tourT = (now - tourStartMs) * 0.001;
+        Object.assign(state, sampleTour(tourT));
+        inputs.preset.value = "custom";
+        pushStateToUiThrottled(now);
+      }
+
+      const windF = Math.max(0, Math.min(30, state.wind));
+      const time = t * (0.70 + windF * 0.055);
+
+      const dirRad = (state.dir * Math.PI) / 180;
+      const dirVecX = Math.cos(dirRad);
+      const dirVecY = Math.sin(dirRad);
+
+      const wob = 0.10 * Math.sin(time * 0.06);
+      const wobC = Math.cos(wob);
+      const wobS = Math.sin(wob);
+
+      const az = 0.65 + 0.20 * Math.sin(time * 0.03);
+      const elevDay = lerp(0.20, 1.30, state.lighting);
+      const elevNight = 0.55;
+      const elev = lerp(elevDay, elevNight, state.tod);
+
+      const ce = Math.cos(elev), se = Math.sin(elev);
+      const sunX = Math.cos(az) * ce;
+      const sunY = se;
+      const sunZ = Math.sin(az) * ce;
+	  
+	  const heightF = Math.max(0, Math.min(2.8, state.height));
+	  const chopF   = Math.max(0, Math.min(1.6, state.chop));
+	  const foamF   = Math.max(0, Math.min(1.4, state.foam));
+	  const detailF = Math.max(0, Math.min(1.4, state.detail));
+
+      const pitch = clamp(state.camPitch, -0.12, 0.45);
+
+      gl.uniform1f(uTime, time);
+
+      gl.uniform1f(uWind, windF);
+      gl.uniform1f(uHeight, heightF);
+      gl.uniform2f(uDirVec, dirVecX, dirVecY);
+      gl.uniform2f(uWobSC, wobC, wobS);
+	  gl.uniform1f(uChop,   chopF);
+	  gl.uniform1f(uFoam,   foamF);
+	  gl.uniform1f(uDetail, detailF);
+
+      gl.uniform1f(uLight, state.lighting);
+      gl.uniform1f(uTod, state.tod);
+      gl.uniform1f(uTemp, state.temp);
+      gl.uniform1f(uHaze, state.haze);
+
+      gl.uniform1f(uCamPitch, pitch);
+      gl.uniform1f(uCamZoom, state.camZoom);
+      gl.uniform2f(uParallax, pointerSm.x, pointerSm.y);
+
+      gl.uniform3f(uSun, sunX, sunY, sunZ);
+
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  // UI-Status wiederherstellen
+  try {
+    const uiState = JSON.parse(localStorage.getItem(UI_KEY) || "null");
+    if (uiState && typeof uiState.cinematic === "boolean"){
+      cinematic = uiState.cinematic;
+      ui.classList.toggle("hidden", cinematic);
+      btnCinema.textContent = cinematic ? "Show UI" : "Hide UI";
+    }
+  } catch {}
+
+  // Init
+  applyPreset("breeze");
+  effectiveQuality = state.quality;
+  resize();
+  pushLabels();
+  qeffEl.textContent = `Qeff: ${effectiveQuality.toFixed(2)}`;
+
+  requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>

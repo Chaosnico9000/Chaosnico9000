@@ -1,0 +1,1662 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <title>Warm & Fun Holiday Card (Kids Sticker Drop!)</title>
+  <style>
+    :root{
+      --bg0:#06111f;
+      --bg1:#0b2a3f;
+      --panel: rgba(255,255,255,.10);
+      --panel2: rgba(255,255,255,.07);
+      --stroke: rgba(255,255,255,.16);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.72);
+      --shadow: 0 24px 80px rgba(0,0,0,.55);
+      --radius: 18px;
+      --radius2: 26px;
+      --accent: #7fe6ff;
+      --accent2:#ffd36e;
+      --good:#7dffa8;
+      --bad:#ff7d7d;
+      --cardW: min(980px, calc(100vw - 40px));
+      --cardH: min(640px, calc(100vh - 250px));
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color:var(--text);
+      overflow:hidden;
+      background:
+        radial-gradient(1200px 800px at 20% 10%, rgba(127,230,255,.12), transparent 55%),
+        radial-gradient(900px 700px at 85% 20%, rgba(255,211,110,.10), transparent 60%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
+    }
+
+    /* soft aurora */
+    .aurora{
+      position:fixed; inset:-20% -10%;
+      filter: blur(30px);
+      opacity:.7;
+      pointer-events:none;
+      transform: translateZ(0);
+    }
+    .aurora::before,.aurora::after{
+      content:"";
+      position:absolute; inset:0;
+      background:
+        radial-gradient(500px 260px at 25% 30%, rgba(125,255,168,.18), transparent 60%),
+        radial-gradient(520px 280px at 70% 35%, rgba(127,230,255,.18), transparent 60%),
+        radial-gradient(480px 260px at 55% 70%, rgba(255,125,255,.12), transparent 62%);
+      animation: aurora 14s ease-in-out infinite alternate;
+    }
+    .aurora::after{
+      opacity:.7;
+      animation-duration: 18s;
+      mix-blend-mode: screen;
+      transform: scale(1.1);
+    }
+    @keyframes aurora{
+      from{ transform: translate3d(-2%, -1%, 0) rotate(-1deg) scale(1.03); }
+      to  { transform: translate3d(2%, 1%, 0) rotate(1deg) scale(1.06); }
+    }
+
+    /* layout */
+    .app{
+      position:relative;
+      height:100%;
+      display:grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 14px;
+      padding: 14px;
+    }
+
+    header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
+      border: 1px solid var(--stroke);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+    .brand{
+      display:flex; align-items:center; gap:12px;
+      min-width: 260px;
+    }
+    .logo{
+      width:38px; height:38px; border-radius: 12px;
+      display:grid; place-items:center;
+      background: radial-gradient(circle at 30% 30%, rgba(255,211,110,.35), rgba(127,230,255,.18));
+      border:1px solid var(--stroke);
+      box-shadow: 0 10px 30px rgba(0,0,0,.30);
+    }
+    .brand h1{
+      font-size: 14px;
+      margin:0;
+      letter-spacing: .2px;
+      line-height: 1.1;
+    }
+    .brand .sub{
+      margin:0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .controls{
+      display:flex;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+      gap: 10px;
+      align-items:center;
+    }
+    .control{
+      display:flex; align-items:center; gap:8px;
+      padding: 8px 10px;
+      border-radius: 14px;
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,.06);
+      box-shadow: 0 10px 28px rgba(0,0,0,.18);
+    }
+    .control label{ font-size: 12px; color: var(--muted); }
+    select,input[type="color"]{
+      background: rgba(10,20,30,.45);
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 10px;
+      padding: 6px 8px;
+      outline:none;
+    }
+    input[type="range"]{ width: 130px; accent-color: var(--accent); }
+    button{
+      appearance:none; border:none; cursor:pointer;
+      color: var(--text);
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.16);
+      padding: 10px 12px;
+      border-radius: 14px;
+      font-weight: 650;
+      letter-spacing:.1px;
+      box-shadow: 0 10px 28px rgba(0,0,0,.16);
+      transition: transform .08s ease, background .15s ease, border-color .15s ease;
+      user-select:none;
+      touch-action: manipulation;
+      white-space:nowrap;
+    }
+    button:hover{ background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.22); }
+    button:active{ transform: translateY(1px) scale(.99); }
+    .btn-accent{
+      background: linear-gradient(180deg, rgba(127,230,255,.20), rgba(127,230,255,.10));
+      border-color: rgba(127,230,255,.35);
+    }
+    .btn-warm{
+      background: linear-gradient(180deg, rgba(255,211,110,.20), rgba(255,211,110,.10));
+      border-color: rgba(255,211,110,.35);
+    }
+    .btn-good{
+      background: linear-gradient(180deg, rgba(125,255,168,.18), rgba(125,255,168,.10));
+      border-color: rgba(125,255,168,.30);
+    }
+    .btn-bad{
+      background: linear-gradient(180deg, rgba(255,125,125,.18), rgba(255,125,125,.10));
+      border-color: rgba(255,125,125,.30);
+    }
+    .tiny{
+      font-size: 12px;
+      color: var(--muted);
+      padding: 2px 0 0;
+    }
+
+    main{
+      position:relative;
+      display:grid;
+      grid-template-columns: 280px 1fr;
+      gap: 14px;
+      min-height: 0;
+    }
+
+    /* sticker tray */
+    .tray{
+      min-height:0;
+      border-radius: var(--radius2);
+      background: linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.05));
+      border: 1px solid var(--stroke);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+    }
+    .trayHead{
+      padding: 12px 12px 10px;
+      display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+    }
+    .trayHead h2{
+      margin:0;
+      font-size: 13px;
+      letter-spacing:.2px;
+    }
+    .trayHead p{
+      margin:4px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+      line-height:1.25;
+    }
+    .trayBody{
+      padding: 10px;
+      overflow:auto;
+      min-height:0;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      align-content:start;
+    }
+    .trayItem{
+      position:relative;
+      display:flex; align-items:center; gap:10px;
+      padding: 10px 10px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.14);
+      box-shadow: 0 12px 26px rgba(0,0,0,.18);
+      user-select:none;
+      touch-action:none; /* important for drag */
+      cursor: grab;
+      overflow:hidden;
+    }
+    .trayItem:active{ cursor:grabbing; }
+    .trayItem::after{
+      content:"";
+      position:absolute; inset:-30%;
+      background: radial-gradient(circle at 20% 30%, rgba(127,230,255,.18), transparent 35%),
+                  radial-gradient(circle at 80% 60%, rgba(255,211,110,.16), transparent 38%);
+      opacity:.6;
+      pointer-events:none;
+    }
+    .trayEmoji{
+      font-size: 24px;
+      width: 34px; height: 34px;
+      display:grid; place-items:center;
+      border-radius: 12px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.14);
+      flex: 0 0 auto;
+    }
+    .trayLabel{
+      font-size: 12px;
+      font-weight: 750;
+      line-height: 1.05;
+      letter-spacing: .2px;
+    }
+    .trayTag{
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 3px;
+      display:block;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 100px;
+    }
+    .selectedStamp{
+      outline: 2px solid rgba(127,230,255,.60);
+      border-color: rgba(127,230,255,.60);
+      background: rgba(127,230,255,.08);
+    }
+
+    /* card */
+    .stage{
+      min-height:0;
+      border-radius: var(--radius2);
+      background: linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.04));
+      border: 1px solid var(--stroke);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      overflow:hidden;
+      position:relative;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .cardTop{
+      position:relative;
+      padding: 12px 12px 10px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap: 10px;
+    }
+
+    .tofrom{
+      display:flex;
+      flex-wrap:wrap;
+      gap: 8px 10px;
+      align-items:center;
+    }
+
+    .pillInput{
+      display:flex;
+      align-items:center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.12);
+    }
+    .pillInput span{
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .pillInput input{
+      width: 140px;
+      padding: 0;
+      border: none;
+      outline:none;
+      background: transparent;
+      color: var(--text);
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    .stageActions{
+      display:flex;
+      gap: 8px;
+      align-items:center;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+
+    .canvasWrap{
+      position:relative;
+      flex: 1;
+      min-height:0;
+      padding: 12px;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+    }
+
+    .card{
+      width: var(--cardW);
+      height: var(--cardH);
+      max-height: 100%;
+      border-radius: 28px;
+      position:relative;
+      overflow:hidden;
+      border: 1px solid rgba(255,255,255,.14);
+      box-shadow: 0 26px 90px rgba(0,0,0,.55);
+      background:
+        radial-gradient(900px 600px at 50% 15%, rgba(127,230,255,.16), transparent 65%),
+        linear-gradient(180deg, rgba(10,26,40,.96), rgba(9,14,22,.96));
+      transform: translateZ(0);
+      touch-action:none;
+    }
+
+    /* scene backgrounds (themes) */
+    .theme-night{
+      background:
+        radial-gradient(900px 600px at 50% 15%, rgba(127,230,255,.16), transparent 65%),
+        radial-gradient(600px 380px at 20% 35%, rgba(255,211,110,.10), transparent 62%),
+        linear-gradient(180deg, rgba(10,26,40,.96), rgba(9,14,22,.96));
+    }
+    .theme-candy{
+      background:
+        radial-gradient(900px 600px at 50% 15%, rgba(255,125,255,.16), transparent 65%),
+        radial-gradient(700px 440px at 20% 35%, rgba(255,211,110,.14), transparent 62%),
+        linear-gradient(180deg, rgba(38,12,45,.96), rgba(10,10,18,.96));
+    }
+    .theme-aurora{
+      background:
+        radial-gradient(900px 600px at 50% 15%, rgba(125,255,168,.18), transparent 65%),
+        radial-gradient(700px 440px at 70% 35%, rgba(127,230,255,.16), transparent 62%),
+        linear-gradient(180deg, rgba(10,24,22,.96), rgba(9,12,18,.96));
+    }
+
+    /* twinkly border lights */
+    .lights{
+      position:absolute;
+      inset: 12px 12px auto 12px;
+      height: 44px;
+      pointer-events:none;
+      opacity:.95;
+    }
+    .lightWire{
+      position:absolute;
+      left: 0; right:0;
+      top: 18px;
+      height: 2px;
+      background: rgba(255,255,255,.22);
+      filter: blur(.2px);
+      transform: rotate(-1deg);
+    }
+    .bulb{
+      position:absolute;
+      top: 10px;
+      width: 12px; height: 12px;
+      border-radius: 999px;
+      background: rgba(127,230,255,.9);
+      box-shadow: 0 0 14px rgba(127,230,255,.6);
+      animation: twinkle 1.6s ease-in-out infinite;
+    }
+    .bulb:nth-child(odd){ animation-duration: 1.2s; }
+    .bulb:nth-child(3n){ animation-duration: 2.1s; }
+    @keyframes twinkle{
+      0%,100%{ transform: translateY(0) scale(.95); opacity:.75; filter: saturate(1); }
+      50%{ transform: translateY(-1px) scale(1.05); opacity: 1; filter: saturate(1.35); }
+    }
+
+    /* snowy hills */
+    .hills{
+      position:absolute;
+      left:-10%;
+      right:-10%;
+      bottom:-25%;
+      height: 62%;
+      background:
+        radial-gradient(120% 80% at 20% 30%, rgba(255,255,255,.16), rgba(255,255,255,.02) 58%, transparent 64%),
+        radial-gradient(120% 80% at 65% 25%, rgba(255,255,255,.12), rgba(255,255,255,.02) 58%, transparent 64%),
+        radial-gradient(120% 80% at 85% 45%, rgba(255,255,255,.12), rgba(255,255,255,.02) 58%, transparent 64%);
+      filter: blur(.2px);
+      opacity:.95;
+      pointer-events:none;
+    }
+
+    /* big greeting */
+    .greeting{
+      position:absolute;
+      top: 64px;
+      left: 24px;
+      right: 24px;
+      display:flex;
+      justify-content:center;
+      text-align:center;
+      pointer-events:none;
+    }
+    .greetingText{
+      pointer-events:auto;
+      padding: 14px 18px;
+      border-radius: 20px;
+      border: 1px dashed rgba(255,255,255,.18);
+      background: rgba(0,0,0,.12);
+      backdrop-filter: blur(6px);
+      max-width: 84%;
+      cursor:text;
+      user-select:text;
+      outline:none;
+      box-shadow: 0 18px 55px rgba(0,0,0,.22);
+      transform: translateZ(0);
+    }
+    .greetingText h3{
+      margin:0;
+      font-size: clamp(20px, 3.4vw, 44px);
+      letter-spacing:.3px;
+      line-height: 1.05;
+      background: linear-gradient(90deg, rgba(127,230,255,.95), rgba(255,211,110,.96), rgba(125,255,168,.92));
+      -webkit-background-clip:text;
+      background-clip:text;
+      color: transparent;
+      text-shadow: 0 10px 24px rgba(0,0,0,.35);
+    }
+    .greetingText p{
+      margin: 10px 0 0;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.2;
+    }
+
+    /* drop zone and stickers */
+    .dropZone{
+      position:absolute;
+      inset:0;
+      overflow:hidden;
+      touch-action:none;
+    }
+
+    .sticker{
+      position:absolute;
+      left: 50%; top: 50%;
+      transform: translate(-50%,-50%) scale(1) rotate(0deg);
+      transform-origin: center;
+      user-select:none;
+      touch-action:none;
+      cursor: grab;
+      filter: drop-shadow(0 16px 24px rgba(0,0,0,.35));
+      will-change: transform;
+    }
+    .sticker:active{ cursor: grabbing; }
+    .sticker .face{
+      font-size: 52px;
+      line-height: 1;
+      padding: 8px 10px;
+      border-radius: 22px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.12);
+      backdrop-filter: blur(6px);
+    }
+
+    /* special stickers (CSS-only) */
+    .sticker.special .face{
+      padding: 10px 14px;
+      border-radius: 22px;
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing:.2px;
+      color: rgba(255,255,255,.92);
+      background: rgba(0,0,0,.18);
+      border: 1px solid rgba(255,255,255,.14);
+    }
+    .speech{
+      position:relative;
+      padding: 12px 14px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.16);
+      color: rgba(255,255,255,.92);
+      font-weight: 850;
+      font-size: 16px;
+      text-shadow: 0 10px 18px rgba(0,0,0,.28);
+    }
+    .speech::after{
+      content:"";
+      position:absolute;
+      left: 14px;
+      bottom: -10px;
+      width: 16px; height: 16px;
+      background: rgba(255,255,255,.12);
+      border-left: 1px solid rgba(255,255,255,.16);
+      border-bottom: 1px solid rgba(255,255,255,.16);
+      transform: rotate(45deg);
+      border-bottom-left-radius: 3px;
+    }
+    .garland{
+      width: 170px;
+      height: 40px;
+      position:relative;
+      border-radius: 18px;
+      background:
+        radial-gradient(circle at 12% 60%, rgba(125,255,168,.95), transparent 30%),
+        radial-gradient(circle at 30% 70%, rgba(127,230,255,.9), transparent 30%),
+        radial-gradient(circle at 52% 55%, rgba(255,211,110,.95), transparent 30%),
+        radial-gradient(circle at 72% 68%, rgba(255,125,125,.9), transparent 30%),
+        radial-gradient(circle at 90% 58%, rgba(255,125,255,.9), transparent 30%),
+        linear-gradient(180deg, rgba(0,0,0,.10), rgba(0,0,0,.14));
+      border: 1px solid rgba(255,255,255,.16);
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.12);
+    }
+    .garland::before{
+      content:"";
+      position:absolute;
+      inset: 14px 10px auto 10px;
+      height: 2px;
+      background: rgba(255,255,255,.20);
+      border-radius: 99px;
+      transform: rotate(-2deg);
+    }
+
+    .badge{
+      font-size: 12px;
+      color: var(--muted);
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.14);
+      display:inline-flex;
+      align-items:center;
+      gap: 8px;
+      user-select:none;
+      white-space:nowrap;
+    }
+    .dot{
+      width: 10px; height:10px; border-radius:999px;
+      background: rgba(255,125,125,.95);
+      box-shadow: 0 0 18px rgba(255,125,125,.35);
+    }
+    .dot.on{
+      background: rgba(125,255,168,.95);
+      box-shadow: 0 0 18px rgba(125,255,168,.35);
+    }
+
+    /* selection + mini toolbar */
+    .selected{
+      outline: 2px solid rgba(127,230,255,.55);
+      outline-offset: 6px;
+      border-radius: 18px;
+    }
+    .toolbar{
+      position:absolute;
+      left: 14px;
+      right: 14px;
+      bottom: 14px;
+      display:flex;
+      justify-content:center;
+      pointer-events:none;
+    }
+    .toolbarInner{
+      pointer-events:auto;
+      display:flex;
+      align-items:center;
+      gap: 8px;
+      padding: 10px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.18);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 18px 60px rgba(0,0,0,.35);
+      flex-wrap:wrap;
+      justify-content:center;
+    }
+    .toolbarInner button{
+      padding: 9px 10px;
+      border-radius: 14px;
+      box-shadow:none;
+      background: rgba(255,255,255,.09);
+    }
+    .toolbarInner .hint{
+      font-size: 12px;
+      color: var(--muted);
+      margin: 0 6px;
+      user-select:none;
+    }
+
+    /* floating drag ghost */
+    .ghost{
+      position:fixed;
+      z-index:9999;
+      pointer-events:none;
+      transform: translate(-50%,-50%) scale(1.05);
+      filter: drop-shadow(0 24px 28px rgba(0,0,0,.45));
+    }
+
+    /* snow */
+    .snowLayer{
+      position:fixed; inset:0;
+      pointer-events:none;
+      overflow:hidden;
+    }
+    .flake{
+      position:absolute;
+      top: -10vh;
+      width: var(--s, 8px);
+      height: var(--s, 8px);
+      border-radius: 999px;
+      background: rgba(255,255,255,var(--a,.9));
+      box-shadow: 0 0 18px rgba(255,255,255,.12);
+      filter: blur(.1px);
+      opacity: .95;
+      transform: translateX(0);
+      animation:
+        fall var(--d, 9s) linear var(--delay, 0s) infinite,
+        drift var(--w, 3.6s) ease-in-out var(--delay2, 0s) infinite alternate;
+    }
+    .flake.star{
+      background: transparent;
+      width: calc(var(--s) * 1.5);
+      height: calc(var(--s) * 1.5);
+      box-shadow:none;
+    }
+    .flake.star::before{
+      content:"✦";
+      display:block;
+      font-size: calc(var(--s) * 1.7);
+      color: rgba(255,255,255,.65);
+      text-shadow: 0 0 18px rgba(127,230,255,.18);
+      transform: rotate(10deg);
+    }
+    @keyframes fall{
+      to { top: 110vh; }
+    }
+    @keyframes drift{
+      from { transform: translateX(calc(var(--wind, 0px) * -1)); }
+      to   { transform: translateX(var(--wind, 0px)); }
+    }
+
+    /* sparkles */
+    .sparkle{
+      position:fixed;
+      z-index: 9998;
+      pointer-events:none;
+      transform: translate(-50%,-50%);
+      width: 10px; height: 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.95);
+      box-shadow: 0 0 24px rgba(127,230,255,.28);
+      animation: sparkle 900ms ease-out forwards;
+      mix-blend-mode: screen;
+    }
+    .sparkle::after{
+      content:"";
+      position:absolute; inset:-12px;
+      background: radial-gradient(circle, rgba(255,211,110,.28), transparent 55%);
+      border-radius: 999px;
+      opacity:.8;
+    }
+    @keyframes sparkle{
+      0%{ opacity:0; transform: translate(-50%,-50%) scale(.5); }
+      30%{ opacity:1; }
+      100%{ opacity:0; transform: translate(-50%,-70%) scale(1.8); }
+    }
+
+    /* footer */
+    footer{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      background: rgba(255,255,255,.06);
+      border: 1px solid var(--stroke);
+      box-shadow: 0 16px 55px rgba(0,0,0,.35);
+      backdrop-filter: blur(10px);
+      overflow:auto;
+    }
+    .footerLeft, .footerRight{
+      display:flex; align-items:center; gap:10px;
+      flex-wrap:wrap;
+    }
+    .kbd{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 11px;
+      padding: 4px 7px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.18);
+      color: rgba(255,255,255,.82);
+    }
+
+    /* responsive */
+    @media (max-width: 940px){
+      main{ grid-template-columns: 1fr; }
+      .tray{ order: 2; }
+      .stage{ order: 1; }
+      body{ overflow:auto; }
+      .app{ overflow:auto; }
+      .card{ height: min(560px, 64vh); }
+      footer{ position:sticky; bottom: 10px; }
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      .flake,.bulb,.aurora::before,.aurora::after{ animation:none !important; }
+      button{ transition:none !important; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="aurora" aria-hidden="true"></div>
+  <div class="snowLayer" id="snowLayer" aria-hidden="true"></div>
+
+  <div class="app">
+    <header>
+      <div class="brand" aria-label="Holiday card maker">
+        <div class="logo" aria-hidden="true">🎄</div>
+        <div>
+          <h1>Holiday Card Maker (drag-and-drop stickers)</h1>
+          <p class="sub">Made for kids. Also for adults who miss having joy.</p>
+        </div>
+      </div>
+
+      <div class="controls" role="group" aria-label="Global controls">
+        <div class="control" title="Theme">
+          <label for="themeSel">Theme</label>
+          <select id="themeSel" aria-label="Theme">
+            <option value="night">Snowy Night</option>
+            <option value="aurora">Aurora Glow</option>
+            <option value="candy">Candy Land</option>
+          </select>
+        </div>
+
+        <div class="control" title="Background tint">
+          <label for="bgTint">Tint</label>
+          <input id="bgTint" type="color" value="#0b2a3f" aria-label="Background tint" />
+        </div>
+
+        <div class="control" title="Snow amount">
+          <label for="snowAmt">Snow</label>
+          <input id="snowAmt" type="range" min="0" max="140" value="90" />
+        </div>
+
+        <div class="control" title="Wind for the snow">
+          <label for="windAmt">Wind</label>
+          <input id="windAmt" type="range" min="0" max="60" value="18" />
+        </div>
+
+        <button id="soundBtn" class="btn-accent" type="button" aria-pressed="false" title="Click once to enable sound">
+          🔊 Enable Sounds
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <aside class="tray" aria-label="Sticker tray">
+        <div class="trayHead">
+          <div>
+            <h2>Sticker Tray</h2>
+            <p>Drag a sticker onto the card.<br/>Or tap a sticker, then tap the card to stamp it.</p>
+          </div>
+          <div class="badge" id="stampBadge" title="Stamp mode: tap a tray item, then tap the card">
+            <span class="dot" id="stampDot"></span>
+            <span id="stampText">Stamp: off</span>
+          </div>
+        </div>
+        <div class="trayBody" id="trayBody"></div>
+      </aside>
+
+      <section class="stage" aria-label="Card stage">
+        <div class="cardTop">
+          <div class="tofrom" aria-label="To and From">
+            <div class="pillInput">
+              <span>To</span>
+              <input id="toName" value="My Favorite Human" aria-label="To name" />
+            </div>
+            <div class="pillInput">
+              <span>From</span>
+              <input id="fromName" value="Me (obviously)" aria-label="From name" />
+            </div>
+          </div>
+
+          <div class="stageActions" role="group" aria-label="Stage actions">
+            <button id="magicBtn" class="btn-warm" type="button" title="Adds sparkles and a happy sound">✨ Magic</button>
+            <button id="randomBtn" class="btn-good" type="button" title="Drops a bunch of random stickers">🎲 Sprinkle Stickers</button>
+            <button id="clearBtn" class="btn-bad" type="button" title="Clears all stickers">🧽 Clear</button>
+            <button id="printBtn" type="button" title="Print or Save as PDF (browser print)">🖨️ Print</button>
+          </div>
+        </div>
+
+        <div class="canvasWrap">
+          <div class="card theme-night" id="card" aria-label="Holiday card canvas" role="application">
+            <div class="lights" aria-hidden="true" id="lights">
+              <div class="lightWire"></div>
+              <!-- bulbs injected -->
+            </div>
+
+            <div class="greeting">
+              <div class="greetingText" id="greeting" contenteditable="true" spellcheck="false" aria-label="Greeting text (editable)">
+                <h3>Happy Holidays! ❄️</h3>
+                <p>Drag stickers, tap for sounds, and make it sparkle.</p>
+              </div>
+            </div>
+
+            <div class="hills" aria-hidden="true"></div>
+
+            <div class="dropZone" id="dropZone" aria-label="Drop zone"></div>
+
+            <div class="toolbar" id="toolbar" hidden>
+              <div class="toolbarInner" role="group" aria-label="Sticker tools">
+                <button id="biggerBtn" type="button" title="Bigger">➕ Size</button>
+                <button id="smallerBtn" type="button" title="Smaller">➖ Size</button>
+                <button id="rotLBtn" type="button" title="Rotate left">↩️</button>
+                <button id="rotRBtn" type="button" title="Rotate right">↪️</button>
+                <button id="flipBtn" type="button" title="Flip">🪞</button>
+                <button id="frontBtn" type="button" title="Bring to front">⬆️ Front</button>
+                <span class="hint">Tip: double-tap a sticker to delete</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer aria-label="Tips">
+      <div class="footerLeft">
+        <span class="badge"><span class="dot on"></span> Kids mode: big buttons, easy dragging</span>
+        <span class="tiny">Also: if sounds don’t work, your browser is being “helpful.” Click <span class="kbd">Enable Sounds</span> once.</span>
+      </div>
+      <div class="footerRight">
+        <span class="kbd">Drag</span>
+        <span class="kbd">Tap-to-stamp</span>
+        <span class="kbd">Double-tap delete</span>
+        <span class="kbd">Print → Save as PDF</span>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    (() => {
+      const $ = (s, el=document) => el.querySelector(s);
+      const $$ = (s, el=document) => Array.from(el.querySelectorAll(s));
+
+      const trayBody = $("#trayBody");
+      const card = $("#card");
+      const dropZone = $("#dropZone");
+      const toolbar = $("#toolbar");
+      const greeting = $("#greeting");
+
+      const themeSel = $("#themeSel");
+      const bgTint = $("#bgTint");
+      const snowAmt = $("#snowAmt");
+      const windAmt = $("#windAmt");
+
+      const soundBtn = $("#soundBtn");
+      const magicBtn = $("#magicBtn");
+      const randomBtn = $("#randomBtn");
+      const clearBtn = $("#clearBtn");
+      const printBtn = $("#printBtn");
+
+      const biggerBtn = $("#biggerBtn");
+      const smallerBtn = $("#smallerBtn");
+      const rotLBtn = $("#rotLBtn");
+      const rotRBtn = $("#rotRBtn");
+      const flipBtn = $("#flipBtn");
+      const frontBtn = $("#frontBtn");
+
+      const stampBadge = $("#stampBadge");
+      const stampDot = $("#stampDot");
+      const stampText = $("#stampText");
+
+      // ---- Cute sticker catalog (a lot, because humans love clutter) ----
+      const STICKERS = [
+        // Characters
+        { id:"santa", label:"Santa", tag:"Ho ho ho!", emoji:"🎅" },
+        { id:"mrs", label:"Mrs Claus", tag:"Cookies?", emoji:"🤶" },
+        { id:"elf", label:"Elf", tag:"Sneaky helper", emoji:"🧝" },
+        { id:"reindeer", label:"Reindeer", tag:"Zoom zoom", emoji:"🦌" },
+        { id:"snowman", label:"Snowman", tag:"Carrot nose", emoji:"⛄" },
+        { id:"penguin", label:"Penguin", tag:"Waddle!", emoji:"🐧" },
+        { id:"polar", label:"Polar Bear", tag:"Big hug", emoji:"🐻‍❄️" },
+        { id:"fox", label:"Winter Fox", tag:"Fluffy", emoji:"🦊" },
+        { id:"unicorn", label:"Unicorn", tag:"Because why not", emoji:"🦄" },
+        { id:"robot", label:"Robot Elf", tag:"Beep boop", emoji:"🤖" },
+
+        // Decor
+        { id:"tree", label:"Tree", tag:"Sparkly", emoji:"🎄" },
+        { id:"star", label:"Star", tag:"Shiny!", emoji:"⭐" },
+        { id:"snowflake", label:"Snowflake", tag:"Chilly", emoji:"❄️" },
+        { id:"gift", label:"Gift", tag:"Surprise!", emoji:"🎁" },
+        { id:"bell", label:"Bell", tag:"Jingle", emoji:"🔔" },
+        { id:"candle", label:"Candle", tag:"Cozy", emoji:"🕯️" },
+        { id:"lantern", label:"Lantern", tag:"Glow", emoji:"🏮" },
+        { id:"sparkles", label:"Sparkles", tag:"Twinkle", emoji:"✨" },
+        { id:"lights", label:"Garland Lights", tag:"Twinkle line", special:"garland" },
+        { id:"speech", label:"Speech Bubble", tag:"Say stuff", special:"speech" },
+
+        // Treats & fun
+        { id:"cookie", label:"Cookie", tag:"Nom", emoji:"🍪" },
+        { id:"candy", label:"Candy", tag:"Sugar mode", emoji:"🍬" },
+        { id:"lollipop", label:"Lollipop", tag:"Sticky", emoji:"🍭" },
+        { id:"cocoa", label:"Cocoa", tag:"Warm", emoji:"☕" },
+        { id:"cake", label:"Cake", tag:"Party", emoji:"🍰" },
+
+        // Winter gear
+        { id:"scarf", label:"Scarf", tag:"Snug", emoji:"🧣" },
+        { id:"mittens", label:"Mittens", tag:"Tiny hands", emoji:"🧤" },
+        { id:"skate", label:"Skates", tag:"Wheee", emoji:"⛸️" },
+        { id:"sled", label:"Sled", tag:"Downhill", emoji:"🛷" },
+
+        // Extra chaos
+        { id:"balloon", label:"Balloon", tag:"Floaty", emoji:"🎈" },
+        { id:"music", label:"Music", tag:"La la", emoji:"🎵" },
+        { id:"confetti", label:"Fireworks", tag:"Boom!", emoji:"🎆" },
+        { id:"heart", label:"Heart", tag:"Aww", emoji:"💖" },
+        { id:"rainbow", label:"Rainbow", tag:"Color!", emoji:"🌈" },
+        { id:"moon", label:"Moon", tag:"Nighty", emoji:"🌙" },
+      ];
+
+      // ---- Lights border bulbs ----
+      const lights = $("#lights");
+      const bulbCount = 28;
+      for (let i = 0; i < bulbCount; i++){
+        const b = document.createElement("div");
+        b.className = "bulb";
+        const t = i / (bulbCount-1);
+        b.style.left = `calc(${(t*100).toFixed(2)}% - 6px)`;
+        b.style.animationDelay = `${(Math.random()*1.6).toFixed(2)}s`;
+        // hue-ish by choosing between a few glows without setting explicit "colors" per instruction? This is CSS only.
+        const palette = [
+          "rgba(127,230,255,.92)",
+          "rgba(255,211,110,.92)",
+          "rgba(125,255,168,.92)",
+          "rgba(255,125,125,.90)",
+          "rgba(255,125,255,.88)"
+        ];
+        const c = palette[(Math.random()*palette.length)|0];
+        b.style.background = c;
+        b.style.boxShadow = `0 0 14px ${c.replace(",.92",",.55").replace(",.90",",.55").replace(",.88",",.55")}`;
+        lights.appendChild(b);
+      }
+
+      // ---- WebAudio (tiny synth SFX, no external files) ----
+      let audio = { enabled:false, ctx:null, master:null };
+
+      function ensureAudio(){
+        if (audio.ctx) return true;
+        try{
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const master = ctx.createGain();
+          master.gain.value = 0.55;
+          master.connect(ctx.destination);
+          audio.ctx = ctx;
+          audio.master = master;
+          return true;
+        }catch{
+          return false;
+        }
+      }
+
+      function now(){ return audio.ctx?.currentTime ?? 0; }
+
+      function tone({freq=440, type="sine", t=0, dur=0.12, gain=0.16, bend=0, pan=0}){
+        if (!audio.enabled || !audio.ctx) return;
+
+        const ctx = audio.ctx;
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        const p = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+
+        o.type = type;
+        o.frequency.setValueAtTime(freq, t);
+        if (bend !== 0){
+          o.frequency.exponentialRampToValueAtTime(Math.max(40, freq + bend), t + Math.max(0.02, dur*0.7));
+        }
+
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(Math.max(0.0001, gain), t + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+
+        if (p){
+          p.pan.setValueAtTime(pan, t);
+          o.connect(g);
+          g.connect(p);
+          p.connect(audio.master);
+        }else{
+          o.connect(g);
+          g.connect(audio.master);
+        }
+
+        o.start(t);
+        o.stop(t + dur + 0.03);
+      }
+
+      function noisePop(t, dur=0.09, gain=0.20){
+        if (!audio.enabled || !audio.ctx) return;
+        const ctx = audio.ctx;
+        const len = Math.max(1, (ctx.sampleRate * dur)|0);
+        const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i=0;i<len;i++){
+          const x = i/len;
+          // quick "pop" shape
+          data[i] = (Math.random()*2-1) * Math.pow(1-x, 3.2);
+        }
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(gain, t+0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(1600, t);
+        filter.frequency.exponentialRampToValueAtTime(420, t+dur);
+
+        src.connect(filter);
+        filter.connect(g);
+        g.connect(audio.master);
+
+        src.start(t);
+        src.stop(t+dur+0.02);
+      }
+
+      function sfxBell(){
+        if (!audio.enabled || !audio.ctx) return;
+        const t = now();
+        tone({freq: 880, type:"sine", t, dur:0.18, gain:0.11, bend:-120, pan:-0.2});
+        tone({freq: 1320, type:"triangle", t: t+0.01, dur:0.16, gain:0.07, bend:-180, pan:0.2});
+        tone({freq: 1760, type:"sine", t: t+0.02, dur:0.12, gain:0.05, bend:-220, pan:0.0});
+      }
+      function sfxWhoosh(){
+        if (!audio.enabled || !audio.ctx) return;
+        const t = now();
+        tone({freq: 210, type:"sawtooth", t, dur:0.10, gain:0.06, bend:380});
+        tone({freq: 320, type:"triangle", t: t+0.01, dur:0.12, gain:0.05, bend:520});
+      }
+      function sfxPop(){
+        if (!audio.enabled || !audio.ctx) return;
+        const t = now();
+        noisePop(t, 0.08, 0.18);
+        tone({freq: 520, type:"square", t, dur:0.06, gain:0.06, bend:-220});
+      }
+      function sfxTwinkle(){
+        if (!audio.enabled || !audio.ctx) return;
+        const t = now();
+        const notes = [1046.5, 1318.5, 1568, 2093];
+        for (let i=0;i<4;i++){
+          tone({freq: notes[i], type:"sine", t: t + i*0.03, dur:0.09, gain:0.06, bend:-60, pan: (i%2?0.15:-0.15)});
+        }
+      }
+      function sfxMagic(){
+        if (!audio.enabled || !audio.ctx) return;
+        const t = now();
+        const seq = [523.25, 659.25, 783.99, 1046.5, 1318.5];
+        seq.forEach((f,i)=> tone({freq:f, type:"triangle", t:t+i*0.06, dur:0.14, gain:0.055, bend: (i===seq.length-1? -220: -60)}));
+        noisePop(t+0.06, 0.10, 0.10);
+      }
+
+      soundBtn.addEventListener("click", async () => {
+        const ok = ensureAudio();
+        if (!ok) return;
+        if (audio.ctx.state === "suspended"){
+          try{ await audio.ctx.resume(); }catch{}
+        }
+        audio.enabled = true;
+        soundBtn.setAttribute("aria-pressed", "true");
+        soundBtn.textContent = "🔊 Sounds On";
+        sfxBell();
+      });
+
+      // ---- Tray rendering ----
+      let stampMode = { active:false, sticker:null };
+
+      function renderTray(){
+        trayBody.innerHTML = "";
+        for (const s of STICKERS){
+          const item = document.createElement("div");
+          item.className = "trayItem";
+          item.dataset.id = s.id;
+
+          const emoji = document.createElement("div");
+          emoji.className = "trayEmoji";
+          emoji.textContent = s.emoji ?? "✨";
+          item.appendChild(emoji);
+
+          const txt = document.createElement("div");
+          const lab = document.createElement("div");
+          lab.className = "trayLabel";
+          lab.textContent = s.label;
+          const tag = document.createElement("span");
+          tag.className = "trayTag";
+          tag.textContent = s.tag ?? (s.special ? "Special sticker" : "Sticker");
+          txt.appendChild(lab);
+          txt.appendChild(tag);
+
+          item.appendChild(txt);
+
+          // tap to enable stamp mode
+          item.addEventListener("click", (e) => {
+            // ignore click if it was actually a drag end
+            if (item._dragging) return;
+
+            const same = stampMode.active && stampMode.sticker?.id === s.id;
+            stampMode.active = !same;
+            stampMode.sticker = stampMode.active ? s : null;
+            updateStampUI();
+            sfxTwinkle();
+            $$(".trayItem", trayBody).forEach(el => el.classList.toggle("selectedStamp", el.dataset.id === (stampMode.sticker?.id ?? "")));
+          });
+
+          // drag to drop
+          makeTrayDraggable(item, s);
+
+          trayBody.appendChild(item);
+        }
+      }
+
+      function updateStampUI(){
+        if (stampMode.active){
+          stampText.textContent = `Stamp: ${stampMode.sticker?.label ?? "?"}`;
+          stampDot.classList.add("on");
+          stampDot.style.opacity = "1";
+        }else{
+          stampText.textContent = "Stamp: off";
+          stampDot.classList.remove("on");
+          stampDot.style.opacity = ".9";
+        }
+      }
+
+      stampBadge.addEventListener("click", () => {
+        stampMode.active = false;
+        stampMode.sticker = null;
+        updateStampUI();
+        $$(".trayItem", trayBody).forEach(el => el.classList.remove("selectedStamp"));
+        sfxPop();
+      });
+
+      // ---- Stickers on the card ----
+      let selected = null;
+      let zCounter = 10;
+
+      function createStickerElement(def){
+        const el = document.createElement("div");
+        el.className = "sticker";
+        el.dataset.id = def.id;
+
+        const face = document.createElement("div");
+        face.className = "face";
+
+        if (def.special === "speech"){
+          el.classList.add("special");
+          const bubble = document.createElement("div");
+          bubble.className = "speech";
+          bubble.contentEditable = "true";
+          bubble.spellcheck = false;
+          bubble.textContent = "Hi! 🎉";
+          face.style.padding = "0";
+          face.style.background = "transparent";
+          face.style.border = "none";
+          face.style.backdropFilter = "none";
+          face.appendChild(bubble);
+        } else if (def.special === "garland"){
+          el.classList.add("special");
+          const g = document.createElement("div");
+          g.className = "garland";
+          face.style.padding = "0";
+          face.style.background = "transparent";
+          face.style.border = "none";
+          face.style.backdropFilter = "none";
+          face.appendChild(g);
+        } else {
+          face.textContent = def.emoji ?? "✨";
+        }
+
+        el.appendChild(face);
+
+        // transform state
+        el._x = 0.5;
+        el._y = 0.5;
+        el._scale = 1;
+        el._rot = 0;
+        el._flip = 1;
+        el.style.zIndex = String(++zCounter);
+
+        applyTransform(el);
+
+        // interactions
+        makeStickerDraggable(el);
+        el.addEventListener("pointerdown", (e) => {
+          if (e.button !== 0) return;
+          selectSticker(el);
+          // tiny click sparkle
+          spawnSparkles(e.clientX, e.clientY, 5);
+          // fun sound
+          (def.id === "bell" ? sfxBell : sfxTwinkle)();
+        });
+
+        // double-tap delete (kids love chaos)
+        let lastTap = 0;
+        el.addEventListener("pointerup", (e) => {
+          const t = performance.now();
+          if (t - lastTap < 300){
+            // delete
+            if (selected === el) deselect();
+            el.remove();
+            sfxPop();
+            spawnSparkles(e.clientX, e.clientY, 10);
+          }
+          lastTap = t;
+        });
+
+        return el;
+      }
+
+      function applyTransform(el){
+        const rect = dropZone.getBoundingClientRect();
+        const x = el._x * rect.width;
+        const y = el._y * rect.height;
+        el.style.left = `${x}px`;
+        el.style.top  = `${y}px`;
+        el.style.transform = `translate(-50%,-50%) scale(${el._scale * el._flip}, ${el._scale}) rotate(${el._rot}deg)`;
+      }
+
+      function selectSticker(el){
+        if (selected === el) return;
+        if (selected) selected.classList.remove("selected");
+        selected = el;
+        selected.classList.add("selected");
+        toolbar.hidden = false;
+      }
+
+      function deselect(){
+        if (selected){
+          selected.classList.remove("selected");
+          selected = null;
+        }
+        toolbar.hidden = true;
+      }
+
+      // clicking empty space deselects
+      dropZone.addEventListener("pointerdown", (e) => {
+        if (e.target === dropZone){
+          deselect();
+        }
+      });
+
+      // stamp mode: tap card to place sticker
+      card.addEventListener("click", (e) => {
+        if (!stampMode.active || !stampMode.sticker) return;
+        // avoid stamping when clicking controls/text
+        if (e.target.closest(".greetingText")) return;
+        if (e.target.closest(".toolbarInner")) return;
+
+        const pos = clientToZone(e.clientX, e.clientY);
+        const el = createStickerElement(stampMode.sticker);
+        el._x = pos.x;
+        el._y = pos.y;
+        el._scale = 0.95 + Math.random()*0.35;
+        el._rot = (Math.random()*18 - 9);
+        applyTransform(el);
+        dropZone.appendChild(el);
+        selectSticker(el);
+        sfxPop();
+        spawnSparkles(e.clientX, e.clientY, 10);
+      });
+
+      function clientToZone(clientX, clientY){
+        const r = dropZone.getBoundingClientRect();
+        const x = (clientX - r.left) / r.width;
+        const y = (clientY - r.top) / r.height;
+        return { x: clamp(x, 0.02, 0.98), y: clamp(y, 0.02, 0.98) };
+      }
+
+      function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+
+      // ---- Draggable tray items -> ghost -> place sticker ----
+      function makeTrayDraggable(item, def){
+        let ghost = null;
+        let dragging = false;
+        let pointerId = null;
+
+        const start = (e) => {
+          if (e.button !== 0) return;
+          pointerId = e.pointerId;
+          item.setPointerCapture(pointerId);
+
+          dragging = true;
+          item._dragging = true;
+
+          ghost = document.createElement("div");
+          ghost.className = "ghost";
+          ghost.style.left = `${e.clientX}px`;
+          ghost.style.top  = `${e.clientY}px`;
+
+          const preview = document.createElement("div");
+          preview.className = "sticker";
+          preview.style.position = "static";
+          preview.style.transform = "none";
+          preview.style.filter = "drop-shadow(0 26px 30px rgba(0,0,0,.45))";
+          preview.appendChild(createStickerElement(def).querySelector(".face"));
+
+          ghost.appendChild(preview);
+          document.body.appendChild(ghost);
+
+          sfxWhoosh();
+        };
+
+        const move = (e) => {
+          if (!dragging || !ghost) return;
+          ghost.style.left = `${e.clientX}px`;
+          ghost.style.top  = `${e.clientY}px`;
+          // sprinkle tiny sparkles during drag (subtle)
+          if (Math.random() < 0.12) spawnSparkles(e.clientX, e.clientY, 1);
+        };
+
+        const end = (e) => {
+          if (!dragging) return;
+          dragging = false;
+
+          const over = isOverCard(e.clientX, e.clientY);
+          if (over){
+            const pos = clientToZone(e.clientX, e.clientY);
+            const el = createStickerElement(def);
+            el._x = pos.x;
+            el._y = pos.y;
+            el._scale = 0.9 + Math.random()*0.35;
+            el._rot = (Math.random()*22 - 11);
+            applyTransform(el);
+            dropZone.appendChild(el);
+            selectSticker(el);
+            sfxPop();
+            spawnSparkles(e.clientX, e.clientY, 12);
+          } else {
+            sfxTwinkle();
+          }
+
+          if (ghost) ghost.remove();
+          ghost = null;
+
+          // allow click after drag to not immediately toggle stamp selection
+          setTimeout(()=> item._dragging = false, 0);
+        };
+
+        item.addEventListener("pointerdown", start);
+        item.addEventListener("pointermove", move);
+        item.addEventListener("pointerup", end);
+        item.addEventListener("pointercancel", end);
+      }
+
+      function isOverCard(x, y){
+        const r = dropZone.getBoundingClientRect();
+        return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+      }
+
+      // ---- Drag stickers already on card ----
+      function makeStickerDraggable(el){
+        let dragging=false;
+        let pointerId=null;
+        let startX=0, startY=0;
+        let baseX=0, baseY=0;
+
+        el.addEventListener("pointerdown", (e) => {
+          if (e.button !== 0) return;
+          // if user is editing a speech bubble, don't drag the whole sticker
+          if (e.target && e.target.isContentEditable) return;
+
+          selectSticker(el);
+          dragging = true;
+          pointerId = e.pointerId;
+          el.setPointerCapture(pointerId);
+
+          const r = dropZone.getBoundingClientRect();
+          startX = e.clientX;
+          startY = e.clientY;
+          baseX = el._x * r.width;
+          baseY = el._y * r.height;
+
+          sfxWhoosh();
+        });
+
+        el.addEventListener("pointermove", (e) => {
+          if (!dragging) return;
+          const r = dropZone.getBoundingClientRect();
+          const dx = e.clientX - startX;
+          const dy = e.clientY - startY;
+          const nx = (baseX + dx) / r.width;
+          const ny = (baseY + dy) / r.height;
+          el._x = clamp(nx, 0.02, 0.98);
+          el._y = clamp(ny, 0.02, 0.98);
+          applyTransform(el);
+          if (Math.random() < 0.08) spawnSparkles(e.clientX, e.clientY, 1);
+        });
+
+        const end = (e) => {
+          if (!dragging) return;
+          dragging = false;
+          sfxPop();
+          spawnSparkles(e.clientX, e.clientY, 8);
+        };
+
+        el.addEventListener("pointerup", end);
+        el.addEventListener("pointercancel", end);
+      }
+
+      // ---- Toolbar actions ----
+      function nudgeSelected(fn){
+        if (!selected) return;
+        fn(selected);
+        applyTransform(selected);
+        selected.style.zIndex = String(++zCounter);
+      }
+
+      biggerBtn.addEventListener("click", () => { nudgeSelected(s => s._scale = Math.min(2.2, s._scale + 0.10)); sfxTwinkle(); });
+      smallerBtn.addEventListener("click", () => { nudgeSelected(s => s._scale = Math.max(0.35, s._scale - 0.10)); sfxTwinkle(); });
+      rotLBtn.addEventListener("click", () => { nudgeSelected(s => s._rot -= 10); sfxWhoosh(); });
+      rotRBtn.addEventListener("click", () => { nudgeSelected(s => s._rot += 10); sfxWhoosh(); });
+      flipBtn.addEventListener("click", () => { nudgeSelected(s => s._flip *= -1); sfxPop(); });
+      frontBtn.addEventListener("click", () => { nudgeSelected(s => s.style.zIndex = String(++zCounter)); sfxBell(); });
+
+      // ---- Snow generator ----
+      const snowLayer = $("#snowLayer");
+      let snowflakes = [];
+
+      function rebuildSnow(){
+        const count = parseInt(snowAmt.value, 10);
+        const wind = parseInt(windAmt.value, 10);
+
+        // remove extras
+        while (snowflakes.length > count){
+          const f = snowflakes.pop();
+          f.remove();
+        }
+
+        // add needed
+        while (snowflakes.length < count){
+          const f = document.createElement("div");
+          const isStar = Math.random() < 0.12;
+          f.className = "flake" + (isStar ? " star" : "");
+          snowLayer.appendChild(f);
+          snowflakes.push(f);
+        }
+
+        // update properties
+        for (const f of snowflakes){
+          const s = 3 + Math.random()*8;
+          const d = 6 + Math.random()*10;
+          const delay = -Math.random()*d; // negative so it's already falling
+          const wobble = 1.8 + Math.random()*3.4;
+          const op = 0.55 + Math.random()*0.35;
+
+          f.style.left = `${Math.random()*100}%`;
+          f.style.setProperty("--s", `${s.toFixed(2)}px`);
+          f.style.setProperty("--d", `${d.toFixed(2)}s`);
+          f.style.setProperty("--delay", `${delay.toFixed(2)}s`);
+          f.style.setProperty("--delay2", `${(-Math.random()*wobble).toFixed(2)}s`);
+          f.style.setProperty("--w", `${wobble.toFixed(2)}s`);
+          f.style.setProperty("--a", op.toFixed(2));
+          f.style.setProperty("--wind", `${wind}px`);
+        }
+      }
+
+      snowAmt.addEventListener("input", rebuildSnow);
+      windAmt.addEventListener("input", rebuildSnow);
+
+      // ---- Theme + tint ----
+      function setTheme(){
+        card.classList.remove("theme-night","theme-aurora","theme-candy");
+        const v = themeSel.value;
+        card.classList.add(v === "aurora" ? "theme-aurora" : v === "candy" ? "theme-candy" : "theme-night");
+        sfxTwinkle();
+      }
+      themeSel.addEventListener("change", setTheme);
+
+      bgTint.addEventListener("input", () => {
+        // tint global bg subtly
+        document.documentElement.style.setProperty("--bg1", bgTint.value);
+      });
+
+      // ---- Sparkles ----
+      function spawnSparkles(x, y, n=8){
+        for (let i=0;i<n;i++){
+          const s = document.createElement("div");
+          s.className = "sparkle";
+          const ox = (Math.random()*2-1) * 18;
+          const oy = (Math.random()*2-1) * 14;
+          s.style.left = `${x + ox}px`;
+          s.style.top  = `${y + oy}px`;
+          s.style.transform = `translate(-50%,-50%) scale(${0.7 + Math.random()*1.1})`;
+          document.body.appendChild(s);
+          setTimeout(()=> s.remove(), 1100);
+        }
+      }
+
+      // ---- Magic + random + clear + print ----
+      magicBtn.addEventListener("click", () => {
+        const r = dropZone.getBoundingClientRect();
+        // sparkle burst around the card
+        for (let i=0;i<24;i++){
+          const x = r.left + Math.random()*r.width;
+          const y = r.top  + Math.random()*r.height;
+          spawnSparkles(x, y, 1);
+        }
+        sfxMagic();
+      });
+
+      randomBtn.addEventListener("click", () => {
+        const picks = 10 + (Math.random()*10|0);
+        const r = dropZone.getBoundingClientRect();
+        for (let i=0;i<picks;i++){
+          const def = STICKERS[(Math.random()*STICKERS.length)|0];
+          const el = createStickerElement(def);
+          el._x = 0.08 + Math.random()*0.84;
+          el._y = 0.18 + Math.random()*0.76;
+          el._scale = 0.65 + Math.random()*0.85;
+          el._rot = Math.random()*40 - 20;
+          applyTransform(el);
+          dropZone.appendChild(el);
+        }
+        sfxBell();
+        spawnSparkles(r.left + r.width*0.5, r.top + r.height*0.35, 20);
+      });
+
+      clearBtn.addEventListener("click", () => {
+        // no modal. kids don’t read them anyway.
+        deselect();
+        dropZone.innerHTML = "";
+        sfxPop();
+      });
+
+      printBtn.addEventListener("click", () => {
+        // Print as-is. Use browser "Save as PDF" if you want.
+        window.print();
+      });
+
+      // ---- Default placed stickers (so it doesn't look empty and sad) ----
+      function placeDefaults(){
+        const defaults = [
+          { id:"tree",  x:0.50, y:0.74, s:1.25, r:-6 },
+          { id:"santa", x:0.25, y:0.78, s:1.10, r: 5 },
+          { id:"gift",  x:0.70, y:0.82, s:0.95, r:-10 },
+          { id:"snowman", x:0.86, y:0.76, s:1.00, r: 7 },
+          { id:"star", x:0.50, y:0.26, s:0.95, r: 0 },
+          { id:"lights", x:0.50, y:0.54, s:1.05, r:-3 },
+          { id:"speech", x:0.22, y:0.48, s:0.95, r:-6 },
+        ];
+
+        for (const d of defaults){
+          const def = STICKERS.find(s => s.id === d.id);
+          if (!def) continue;
+          const el = createStickerElement(def);
+          el._x = d.x; el._y = d.y; el._scale = d.s; el._rot = d.r;
+          applyTransform(el);
+          dropZone.appendChild(el);
+
+          // customize default speech bubble
+          if (def.special === "speech"){
+            const bubble = el.querySelector(".speech");
+            if (bubble) bubble.textContent = "Happy Holidays!! 🎁";
+          }
+        }
+      }
+
+      // ---- Make greeting nicer and keep caret sane ----
+      greeting.addEventListener("keydown", (e) => {
+        // keep it tidy: Enter creates <div> in contenteditable, which gets weird fast.
+        if (e.key === "Enter"){
+          e.preventDefault();
+          document.execCommand("insertLineBreak");
+        }
+      });
+
+      // ---- Card resize updates sticker positions ----
+      const ro = new ResizeObserver(() => {
+        $$(".sticker", dropZone).forEach(applyTransform);
+      });
+      ro.observe(dropZone);
+
+      // ---- Init ----
+      renderTray();
+      updateStampUI();
+      setTheme();
+      rebuildSnow();
+      placeDefaults();
+
+      // tiny flourish: sparkles on first interaction
+      window.addEventListener("pointerdown", (e) => {
+        if (Math.random() < 0.12) spawnSparkles(e.clientX, e.clientY, 3);
+      }, { passive:true });
+
+      // keyboard escape to deselect
+      window.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") deselect();
+      });
+
+      // keep toolbar visible only when a sticker is selected
+      toolbar.hidden = true;
+    })();
+  </script>
+
+  <style>
+    /* Print: show only the card (because printers don’t appreciate UI chrome) */
+    @media print{
+      body{ overflow:visible; background:#000; }
+      header, footer, .tray, .cardTop{ display:none !important; }
+      .app{ padding:0; gap:0; }
+      main{ grid-template-columns: 1fr; gap:0; }
+      .stage{ border:none; box-shadow:none; background: transparent; }
+      .canvasWrap{ padding:0; }
+      .card{ width: 100vw; height: 100vh; border:none; border-radius:0; box-shadow:none; }
+      .snowLayer, .aurora{ display:none !important; }
+    }
+  </style>
+</body>
+</html>

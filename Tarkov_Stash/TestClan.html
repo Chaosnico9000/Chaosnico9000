@@ -1,0 +1,3391 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>IR9: Rogue Recon (Single-File Roguelike Adventure)</title>
+  <meta name="theme-color" content="#0b0f16" />
+  <style>
+    :root{
+      --bg0:#05070c;
+      --bg1:#091428;
+      --panel: rgba(12, 18, 32, .62);
+      --panel2: rgba(12, 18, 32, .38);
+      --stroke: rgba(255,255,255,.10);
+      --text: rgba(245,250,255,.92);
+      --muted: rgba(245,250,255,.62);
+      --accent: rgba(120, 230, 255, .95);
+      --accent2: rgba(170, 120, 255, .92);
+      --good: rgba(80, 255, 190, .92);
+      --warn: rgba(255, 190, 80, .92);
+      --bad: rgba(255, 90, 120, .92);
+      --shadow: 0 22px 90px rgba(0,0,0,.55);
+      --radius: 18px;
+      --radius2: 22px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0}
+    body{
+      font-family:var(--sans);
+      color:var(--text);
+      background:
+        radial-gradient(1200px 900px at 20% 15%, rgba(120,230,255,.10), transparent 60%),
+        radial-gradient(1200px 900px at 85% 70%, rgba(170,120,255,.10), transparent 60%),
+        linear-gradient(180deg,var(--bg0),var(--bg1));
+      overflow:hidden;
+    }
+
+    /* Background canvases */
+    #bg, #fx{
+      position:fixed; inset:0;
+      width:100%; height:100%;
+      display:block;
+      pointer-events:none;
+    }
+    #fx{ mix-blend-mode: screen; opacity:.85; filter:saturate(1.05) contrast(1.02) }
+
+    /* Layout */
+    .app{
+      position:relative;
+      height:100%;
+      display:grid;
+      grid-template-columns: 360px 1fr 340px;
+      gap:14px;
+      padding:14px;
+      padding-bottom: max(14px, env(safe-area-inset-bottom));
+    }
+    @media (max-width: 1100px){
+      .app{ grid-template-columns: 360px 1fr; grid-template-rows:auto 1fr; }
+      .right{ grid-column:1 / -1; }
+    }
+    @media (max-width: 860px){
+      .app{ grid-template-columns: 1fr; grid-template-rows:auto auto 1fr; }
+      .left,.right{ grid-column:1 / -1; }
+    }
+
+    .panel{
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border: 1px solid var(--stroke);
+      border-radius: var(--radius2);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      overflow:hidden;
+      position:relative;
+    }
+    .panel::before{
+      content:"";
+      position:absolute; inset:-2px;
+      background:
+        radial-gradient(600px 220px at 20% 0%, rgba(120,230,255,.10), transparent 60%),
+        radial-gradient(520px 220px at 85% 10%, rgba(170,120,255,.10), transparent 60%);
+      pointer-events:none;
+    }
+    .panel > .inner{
+      position:relative;
+      padding:14px;
+    }
+
+    .title{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:10px;
+      margin-bottom:10px;
+    }
+    .brand{
+      display:flex; align-items:center; gap:10px;
+      min-width:0;
+    }
+    .logo{
+      width:38px; height:38px;
+      border-radius:12px;
+      background:
+        radial-gradient(16px 16px at 30% 30%, rgba(255,255,255,.35), transparent 60%),
+        linear-gradient(135deg, rgba(120,230,255,.55), rgba(170,120,255,.45));
+      border:1px solid rgba(255,255,255,.16);
+      box-shadow: 0 18px 55px rgba(0,0,0,.35);
+      position:relative;
+      overflow:hidden;
+    }
+    .logo::after{
+      content:"IR9";
+      position:absolute; inset:0;
+      display:grid; place-items:center;
+      font-family:var(--mono);
+      font-weight:800;
+      letter-spacing:.08em;
+      font-size:13px;
+      text-shadow:0 10px 20px rgba(0,0,0,.45);
+      opacity:.95;
+    }
+    .brand h1{
+      margin:0;
+      font-size:16px;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .brand .sub{
+      margin:2px 0 0 0;
+      font-size:12px;
+      color:var(--muted);
+      font-family:var(--mono);
+      letter-spacing:.02em;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .btnrow{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end}
+    button, .chip{
+      font: inherit;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      padding: 9px 12px;
+      cursor: pointer;
+      transition: transform .08s ease, background .18s ease, border-color .18s ease;
+      user-select:none;
+    }
+    button:hover{ background: rgba(255,255,255,.10); border-color: rgba(255,255,255,.20) }
+    button:active{ transform: translateY(1px) scale(.99) }
+    button.primary{
+      background:
+        radial-gradient(220px 50px at 10% 30%, rgba(120,230,255,.25), transparent 55%),
+        radial-gradient(220px 50px at 80% 60%, rgba(170,120,255,.22), transparent 55%),
+        rgba(255,255,255,.07);
+      border-color: rgba(120,230,255,.22);
+      box-shadow: 0 18px 60px rgba(0,0,0,.28);
+    }
+    button.danger{ border-color: rgba(255,90,120,.28) }
+    button.good{ border-color: rgba(80,255,190,.26) }
+    button.tiny{ padding:6px 10px; border-radius: 12px; font-size:12px }
+    button:disabled{ opacity:.55; cursor:not-allowed }
+
+    .hr{ height:1px; background: rgba(255,255,255,.10); margin:12px 0 }
+
+    /* HUD */
+    .statgrid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+      margin-top:10px;
+    }
+    .stat{
+      background: rgba(0,0,0,.25);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 16px;
+      padding:10px;
+    }
+    .stat .k{ font-size:12px; color:var(--muted); font-family:var(--mono); letter-spacing:.02em }
+    .stat .v{ margin-top:4px; font-size:14px; font-weight:700 }
+    .bar{
+      height:10px;
+      border-radius:999px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.10);
+      overflow:hidden;
+      margin-top:8px;
+    }
+    .bar > i{
+      display:block; height:100%;
+      width:50%;
+      background:
+        radial-gradient(90px 12px at 20% 50%, rgba(255,255,255,.25), transparent 55%),
+        linear-gradient(90deg, rgba(120,230,255,.70), rgba(170,120,255,.60));
+      filter:saturate(1.1);
+      border-radius:999px;
+    }
+    .bar.hp > i{ background: linear-gradient(90deg, rgba(255,90,120,.78), rgba(255,190,80,.65)) }
+    .bar.sta > i{ background: linear-gradient(90deg, rgba(80,255,190,.70), rgba(120,230,255,.55)) }
+
+    /* Center game */
+    .gamewrap{
+      display:flex; flex-direction:column; gap:12px;
+      height:100%;
+    }
+    .canvaswrap{
+      position:relative;
+      flex:1;
+      background: rgba(0,0,0,.25);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: var(--radius2);
+      overflow:hidden;
+    }
+    #game{
+      width:100%; height:100%;
+      display:block;
+    }
+    .overlayTop{
+      position:absolute; left:12px; right:12px; top:12px;
+      display:flex; gap:10px; justify-content:space-between; align-items:flex-start;
+      pointer-events:none;
+    }
+    .pill{
+      pointer-events:none;
+      display:flex; gap:10px; flex-wrap:wrap;
+    }
+    .chip{
+      pointer-events:auto;
+      display:flex; align-items:center; gap:8px;
+      padding:7px 10px;
+      background: rgba(0,0,0,.32);
+      border-color: rgba(255,255,255,.12);
+      font-size:12px;
+      font-family:var(--mono);
+      white-space:nowrap;
+    }
+    .dot{
+      width:8px; height:8px; border-radius:99px;
+      background: rgba(120,230,255,.85);
+      box-shadow: 0 0 18px rgba(120,230,255,.35);
+    }
+    .dot.bad{ background: rgba(255,90,120,.85); box-shadow: 0 0 18px rgba(255,90,120,.35) }
+    .dot.good{ background: rgba(80,255,190,.85); box-shadow: 0 0 18px rgba(80,255,190,.35) }
+    .dot.warn{ background: rgba(255,190,80,.85); box-shadow: 0 0 18px rgba(255,190,80,.35) }
+
+    .log{
+      height: 160px;
+      overflow:auto;
+      padding:10px;
+      background: rgba(0,0,0,.24);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: var(--radius2);
+      font-family: var(--mono);
+      font-size:12px;
+      line-height:1.35;
+    }
+    .log .line{ padding:2px 0; color: rgba(245,250,255,.82) }
+    .log .muted{ color: rgba(245,250,255,.55) }
+    .log .good{ color: var(--good) }
+    .log .bad{ color: var(--bad) }
+    .log .warn{ color: var(--warn) }
+
+    /* Right column */
+    .tabs{
+      display:flex; gap:8px; flex-wrap:wrap;
+      margin-bottom:10px;
+    }
+    .tab{ font-family:var(--mono); font-size:12px; letter-spacing:.02em }
+    .tab.active{
+      border-color: rgba(120,230,255,.28);
+      background:
+        radial-gradient(180px 40px at 20% 40%, rgba(120,230,255,.22), transparent 60%),
+        rgba(255,255,255,.07);
+    }
+
+    .list{
+      display:flex; flex-direction:column; gap:8px;
+    }
+    .card{
+      background: rgba(0,0,0,.24);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 16px;
+      padding:10px;
+    }
+    .card .h{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:10px;
+      font-family:var(--mono);
+      font-size:12px;
+      color: rgba(245,250,255,.84);
+    }
+    .card .p{ margin-top:6px; font-size:12px; color: var(--muted); line-height:1.35 }
+    .tagrow{ display:flex; gap:8px; flex-wrap:wrap; margin-top:8px }
+    .tag{
+      font-family:var(--mono);
+      font-size:11px;
+      padding:4px 8px;
+      border-radius:999px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+      color: rgba(245,250,255,.78);
+    }
+
+    /* Mobile controls */
+    .controls{
+      display:none;
+      gap:10px;
+      justify-content:space-between;
+      align-items:center;
+      margin-top:10px;
+    }
+    @media (max-width: 860px){
+      .controls{ display:flex; }
+    }
+    .dpad{
+      display:grid;
+      grid-template-columns: 44px 44px 44px;
+      grid-template-rows: 44px 44px 44px;
+      gap:8px;
+    }
+    .dpad button{ width:44px; height:44px; padding:0; border-radius: 16px }
+    .dpad .blank{ opacity:0; pointer-events:none }
+    .quick{
+      display:flex; flex-direction:column; gap:8px;
+      align-items:stretch;
+    }
+    .quick button{ min-width: 140px }
+
+    /* Modal */
+    .modal{
+      position:fixed; inset:0;
+      display:none;
+      align-items:center; justify-content:center;
+      background: rgba(0,0,0,.55);
+      z-index:50;
+      padding:16px;
+    }
+    .modal.show{ display:flex }
+    .modal .box{
+      width:min(720px, 100%);
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
+      border: 1px solid rgba(255,255,255,.14);
+      box-shadow: 0 26px 110px rgba(0,0,0,.65);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      overflow:hidden;
+      position:relative;
+    }
+    .modal .box::before{
+      content:"";
+      position:absolute; inset:-2px;
+      background:
+        radial-gradient(640px 240px at 15% 0%, rgba(120,230,255,.14), transparent 60%),
+        radial-gradient(560px 240px at 85% 10%, rgba(170,120,255,.12), transparent 60%);
+      pointer-events:none;
+    }
+    .modal .content{
+      position:relative;
+      padding:16px;
+    }
+    .modal h2{
+      margin:0 0 6px 0;
+      font-size:15px;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+    }
+    .modal .small{
+      margin:0 0 12px 0;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.4;
+    }
+    .grid3{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap:10px;
+    }
+    @media (max-width:700px){
+      .grid3{ grid-template-columns:1fr; }
+    }
+    .choice{
+      text-align:left;
+      padding:12px;
+      border-radius:18px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.22);
+      cursor:pointer;
+      transition: transform .08s ease, border-color .18s ease, background .18s ease;
+    }
+    .choice:hover{ background: rgba(255,255,255,.06); border-color: rgba(120,230,255,.20) }
+    .choice:active{ transform: translateY(1px) }
+    .choice .t{
+      font-family:var(--mono);
+      font-size:12px;
+      letter-spacing:.02em;
+      color: rgba(245,250,255,.90);
+    }
+    .choice .d{
+      margin-top:6px;
+      font-size:12px;
+      color: var(--muted);
+      line-height:1.35;
+    }
+
+    /* Reduced motion */
+    .rm *{ transition:none !important; animation:none !important }
+  </style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<canvas id="fx"></canvas>
+
+<div class="app" id="app">
+  <!-- LEFT -->
+  <section class="panel left">
+    <div class="inner">
+      <div class="title">
+        <div class="brand">
+          <div class="logo" aria-hidden="true"></div>
+          <div style="min-width:0">
+            <h1>IR9: Rogue Recon</h1>
+            <div class="sub" id="subtitle">Single-File Roguelike Adventure • Seeded Runs • Permadeath (natürlich)</div>
+          </div>
+        </div>
+        <div class="btnrow">
+          <button class="primary tiny" id="btnStart">Run starten</button>
+          <button class="tiny" id="btnMeta">Meta</button>
+          <button class="tiny" id="btnHelp">Hilfe</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="h">
+          <span>Run-Konfiguration</span>
+          <span id="runStatus" class="tag">bereit</span>
+        </div>
+        <div class="p">
+          Seed = gleicher Seed, gleicher Run. Für Leute, die gern so tun als hätten sie Kontrolle.
+        </div>
+        <div class="tagrow" style="margin-top:10px">
+          <span class="tag">Seed: <span id="seedLabel">—</span></span>
+          <span class="tag">Gefahr: <span id="dangerLabel">I</span></span>
+          <span class="tag">Ziel: <span id="objectiveLabel">—</span></span>
+        </div>
+        <div class="tagrow">
+          <button class="tiny" id="btnNewSeed">Neuer Seed</button>
+          <button class="tiny" id="btnCopySeed">Seed kopieren</button>
+          <button class="tiny" id="btnPasteSeed">Seed einfügen</button>
+          <button class="tiny" id="btnToggleSound">Sound: an</button>
+          <button class="tiny" id="btnRM">Reduce Motion: aus</button>
+        </div>
+      </div>
+
+      <div class="statgrid" id="hud">
+        <div class="stat">
+          <div class="k">HP</div>
+          <div class="v" id="hpText">—</div>
+          <div class="bar hp"><i id="hpBar"></i></div>
+        </div>
+        <div class="stat">
+          <div class="k">Stamina</div>
+          <div class="v" id="staText">—</div>
+          <div class="bar sta"><i id="staBar"></i></div>
+        </div>
+        <div class="stat">
+          <div class="k">Armor / Schild</div>
+          <div class="v" id="armText">—</div>
+          <div class="bar"><i id="armBar"></i></div>
+        </div>
+        <div class="stat">
+          <div class="k">Credits / Intel</div>
+          <div class="v" id="ecoText">—</div>
+          <div class="bar"><i id="ecoBar"></i></div>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="card">
+        <div class="h">
+          <span>Steuerung</span>
+          <span class="tag">WASD / Pfeile</span>
+        </div>
+        <div class="p">
+          <span class="tag">E</span> Interagieren
+          <span class="tag">I</span> Inventar/Items
+          <span class="tag">Space</span> Warten
+          <span class="tag">Esc</span> Menü/Close
+        </div>
+      </div>
+
+      <div class="controls" aria-label="Mobile Controls">
+        <div class="dpad">
+          <button class="blank" aria-hidden="true"></button>
+          <button id="mvU" aria-label="Up">▲</button>
+          <button class="blank" aria-hidden="true"></button>
+          <button id="mvL" aria-label="Left">◀</button>
+          <button id="mvW" aria-label="Wait">⏳</button>
+          <button id="mvR" aria-label="Right">▶</button>
+          <button class="blank" aria-hidden="true"></button>
+          <button id="mvD" aria-label="Down">▼</button>
+          <button class="blank" aria-hidden="true"></button>
+        </div>
+        <div class="quick">
+          <button class="primary" id="btnInteract">Interagieren (E)</button>
+          <button class="good" id="btnUse">Item (I)</button>
+          <button class="danger" id="btnPanic">Panik (Esc)</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CENTER -->
+  <section class="panel center">
+    <div class="inner gamewrap">
+      <div class="canvaswrap" aria-label="Game View">
+        <canvas id="game"></canvas>
+        <div class="overlayTop">
+          <div class="pill">
+            <span class="chip"><span class="dot" id="dotObjective"></span> Ziel</span>
+            <span class="chip"><span class="dot warn" id="dotDanger"></span> Gefahr</span>
+            <span class="chip"><span class="dot good" id="dotLoot"></span> Loot</span>
+          </div>
+          <div class="pill">
+            <button class="tiny" id="btnZoomOut" title="Zoom out">−</button>
+            <button class="tiny" id="btnZoomIn" title="Zoom in">+</button>
+            <button class="tiny" id="btnCenter" title="Center">◎</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="log" id="log" aria-label="Mission Log"></div>
+    </div>
+  </section>
+
+  <!-- RIGHT -->
+  <section class="panel right">
+    <div class="inner">
+      <div class="tabs">
+        <button class="tab active" data-tab="inv">Inventar</button>
+        <button class="tab" data-tab="map">Minimap</button>
+        <button class="tab" data-tab="codex">Codex</button>
+        <button class="tab" data-tab="run">Run</button>
+      </div>
+
+      <div id="tab_inv" class="list"></div>
+      <div id="tab_map" class="list" style="display:none">
+        <div class="card">
+          <div class="h"><span>Minimap</span><span class="tag">Erkundung</span></div>
+          <div class="p">Grau = unbekannt. Hell = entdeckt. Leuchtend = aktuell sichtbar. Und ja, das soll unheimlich sein.</div>
+          <div style="margin-top:10px; background:rgba(0,0,0,.22); border:1px solid rgba(255,255,255,.10); border-radius:16px; overflow:hidden">
+            <canvas id="minimap" style="width:100%;height:260px;display:block"></canvas>
+          </div>
+          <div class="tagrow">
+            <span class="tag">Legende:</span>
+            <span class="tag">■ Wand</span>
+            <span class="tag">· Boden</span>
+            <span class="tag">★ Ziel</span>
+            <span class="tag">⬒ Händler</span>
+            <span class="tag">◆ Cache</span>
+            <span class="tag">⟡ Exit</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab_codex" class="list" style="display:none"></div>
+      <div id="tab_run" class="list" style="display:none"></div>
+    </div>
+  </section>
+</div>
+
+<!-- MODAL -->
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="box">
+    <div class="content" id="modalContent">
+      <!-- injected -->
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  /* =========================================================
+     IR9: Rogue Recon
+     Single-file roguelike/adventure:
+     - Seeded procedural map
+     - Permadeath, difficulty scaling
+     - Turn-based movement + encounters
+     - Simple tactical combat + loot + perks
+     - Meta-progression (Intel) in localStorage
+  ========================================================== */
+
+  // ---------- DOM ----------
+  const $ = (q, el=document) => el.querySelector(q);
+  const $$ = (q, el=document) => Array.from(el.querySelectorAll(q));
+
+  const bg = $("#bg"), fx = $("#fx"), game = $("#game"), minimap = $("#minimap");
+  const logEl = $("#log");
+
+  const hpText = $("#hpText"), staText = $("#staText"), armText = $("#armText"), ecoText = $("#ecoText");
+  const hpBar = $("#hpBar"), staBar = $("#staBar"), armBar = $("#armBar"), ecoBar = $("#ecoBar");
+
+  const seedLabel = $("#seedLabel"), dangerLabel = $("#dangerLabel"), objectiveLabel = $("#objectiveLabel");
+  const runStatus = $("#runStatus");
+
+  const btnStart = $("#btnStart"), btnMeta = $("#btnMeta"), btnHelp = $("#btnHelp");
+  const btnNewSeed = $("#btnNewSeed"), btnCopySeed = $("#btnCopySeed"), btnPasteSeed = $("#btnPasteSeed");
+  const btnToggleSound = $("#btnToggleSound"), btnRM = $("#btnRM");
+  const btnZoomIn = $("#btnZoomIn"), btnZoomOut = $("#btnZoomOut"), btnCenter = $("#btnCenter");
+
+  const tabInv = $("#tab_inv"), tabMap = $("#tab_map"), tabCodex = $("#tab_codex"), tabRun = $("#tab_run");
+  const modal = $("#modal"), modalContent = $("#modalContent");
+
+  // Mobile controls
+  const mvU=$("#mvU"), mvD=$("#mvD"), mvL=$("#mvL"), mvR=$("#mvR"), mvW=$("#mvW");
+  const btnInteract=$("#btnInteract"), btnUse=$("#btnUse"), btnPanic=$("#btnPanic");
+
+  // ---------- Utils ----------
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const now = () => performance.now();
+
+  function hashStrToSeed(str){
+    // FNV-1a-ish
+    let h = 2166136261 >>> 0;
+    for(let i=0;i<str.length;i++){
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+  function mulberry32(seed){
+    let t = seed >>> 0;
+    return function(){
+      t += 0x6D2B79F5;
+      let x = t;
+      x = Math.imul(x ^ (x >>> 15), x | 1);
+      x ^= x + Math.imul(x ^ (x >>> 7), x | 61);
+      return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function pick(rng, arr){ return arr[Math.floor(rng()*arr.length)] }
+  function chance(rng, p){ return rng() < p }
+  function fmt(n){ return Math.round(n).toString() }
+
+  function safeLocalGet(key, fallback){
+    try{
+      const raw = localStorage.getItem(key);
+      if(!raw) return fallback;
+      return JSON.parse(raw);
+    }catch{ return fallback; }
+  }
+  function safeLocalSet(key, value){
+    try{ localStorage.setItem(key, JSON.stringify(value)); }catch{}
+  }
+
+  // ---------- Audio (WebAudio, no external files) ----------
+  let audioEnabled = true;
+  let audioCtx = null;
+  let masterGain = null;
+  let noiseNode = null;
+  let rainGain = null;
+
+  function ensureAudio(){
+    if(audioCtx) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.5;
+    masterGain.connect(audioCtx.destination);
+  }
+
+  function playClick(freq=420, dur=0.05){
+    if(!audioEnabled) return;
+    ensureAudio();
+    const t = audioCtx.currentTime;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = "triangle";
+    o.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.22, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(masterGain);
+    o.start(t);
+    o.stop(t + dur + 0.02);
+  }
+
+  function playHit(){
+    if(!audioEnabled) return;
+    ensureAudio();
+    const t = audioCtx.currentTime;
+
+    // Noise burst
+    const bufferSize = 2 * audioCtx.sampleRate;
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for(let i=0;i<bufferSize;i++) data[i] = (Math.random()*2-1) * Math.pow(1 - i/bufferSize, 2);
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = buffer;
+
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.value = 900;
+    filter.Q.value = 1.2;
+
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.35, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+
+    noise.connect(filter); filter.connect(g); g.connect(masterGain);
+    noise.start(t);
+    noise.stop(t + 0.10);
+
+    // Thump oscillator
+    const o = audioCtx.createOscillator();
+    const og = audioCtx.createGain();
+    o.type = "sine";
+    o.frequency.setValueAtTime(140, t);
+    o.frequency.exponentialRampToValueAtTime(60, t + 0.08);
+    og.gain.setValueAtTime(0.0001, t);
+    og.gain.exponentialRampToValueAtTime(0.28, t + 0.01);
+    og.gain.exponentialRampToValueAtTime(0.0001, t + 0.10);
+    o.connect(og); og.connect(masterGain);
+    o.start(t);
+    o.stop(t + 0.12);
+  }
+
+  function startRainAmbience(){
+    if(!audioEnabled) return;
+    ensureAudio();
+    if(noiseNode) return;
+
+    const bufferSize = 2 * audioCtx.sampleRate;
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for(let i=0;i<bufferSize;i++) data[i] = (Math.random()*2-1);
+
+    noiseNode = audioCtx.createBufferSource();
+    noiseNode.buffer = buffer;
+    noiseNode.loop = true;
+
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = 1200;
+
+    rainGain = audioCtx.createGain();
+    rainGain.gain.value = 0.10;
+
+    // subtle wobble
+    const lfo = audioCtx.createOscillator();
+    const lfoGain = audioCtx.createGain();
+    lfo.type = "sine";
+    lfo.frequency.value = 0.08;
+    lfoGain.gain.value = 260;
+    lfo.connect(lfoGain);
+    lfoGain.connect(filter.frequency);
+
+    noiseNode.connect(filter);
+    filter.connect(rainGain);
+    rainGain.connect(masterGain);
+
+    noiseNode.start();
+    lfo.start();
+  }
+
+  function stopRainAmbience(){
+    if(noiseNode){
+      try{ noiseNode.stop(); }catch{}
+      noiseNode = null;
+    }
+  }
+
+  // ---------- Game constants ----------
+  const TILE = {
+    WALL: 0,
+    FLOOR: 1,
+    HAZARD: 2,   // anomaly
+    OBJECTIVE: 3,
+    TRADER: 4,
+    CACHE: 5,
+    EXIT: 6
+  };
+
+  const TILE_INFO = {
+    [TILE.WALL]: { ch:"■", name:"Wand", blocks:true },
+    [TILE.FLOOR]: { ch:"·", name:"Boden", blocks:false },
+    [TILE.HAZARD]: { ch:"✶", name:"Anomalie", blocks:false },
+    [TILE.OBJECTIVE]: { ch:"★", name:"Ziel", blocks:false },
+    [TILE.TRADER]: { ch:"⬒", name:"Händler", blocks:false },
+    [TILE.CACHE]: { ch:"◆", name:"Cache", blocks:false },
+    [TILE.EXIT]: { ch:"⟡", name:"Exit", blocks:false },
+  };
+
+  const ITEM_DB = [
+    { id:"medkit", name:"Medkit", type:"consumable", rarity:1, desc:"+18 HP", use:(s)=>heal(s,18) },
+    { id:"stim", name:"Stims", type:"consumable", rarity:1, desc:"+18 Stamina", use:(s)=>gainSta(s,18) },
+    { id:"nanoplates", name:"Nano-Plates", type:"consumable", rarity:2, desc:"+2 Armor (Run)", use:(s)=>{s.player.armorMax+=2; s.player.armor+=2; logGood("Armor verstärkt.");} },
+    { id:"scrambler", name:"Signal-Scrambler", type:"consumable", rarity:2, desc:"Nächster Gegner-Spawn: aussetzen", use:(s)=>{s.runFlags.noSpawnTurns = Math.max(s.runFlags.noSpawnTurns, 18); logGood("Scrambler aktiv. Ruhe ist jetzt legal.");} },
+
+    // weapons (equippable)
+    { id:"knife", name:"IR9 Utility Knife", type:"weapon", rarity:0, desc:"Basic. +0", atk:3, crit:0.05, stam:2, ammo:0, mode:"melee" },
+    { id:"smg", name:"Storm-SMG", type:"weapon", rarity:1, desc:"Schnell. Ammo. +Burst", atk:2, crit:0.08, stam:3, ammo:18, mode:"ranged" },
+    { id:"carbine", name:"Cobalt Carbine", type:"weapon", rarity:2, desc:"Stabil. Gute Crit.", atk:4, crit:0.12, stam:4, ammo:14, mode:"ranged" },
+    { id:"tesla", name:"Tesla Pike", type:"weapon", rarity:3, desc:"Anomalie-Schaden. Ignoriert 1 Armor.", atk:5, crit:0.10, stam:5, ammo:0, mode:"melee", pierce:1, anomalyBonus:2 }
+  ];
+
+  const ARMOR_DB = [
+    { id:"hoodie", name:"Kevlar Hoodie", type:"armor", rarity:0, desc:"+1 Armor", arm:1 },
+    { id:"vest", name:"Field Vest", type:"armor", rarity:1, desc:"+2 Armor", arm:2 },
+    { id:"rig", name:"IR9 Plate Rig", type:"armor", rarity:2, desc:"+3 Armor", arm:3 },
+    { id:"aegis", name:"Aegis Mesh", type:"armor", rarity:3, desc:"+4 Armor, +1 Sicht", arm:4, vision:1 }
+  ];
+
+  const PERKS = [
+    { id:"steady", name:"Ruhige Hände", desc:"+10% Crit. (immer)", apply:(p)=>{p.critBonus+=0.10} },
+    { id:"runner", name:"Sprint-Protokoll", desc:"+10 Stamina max, +1 Regen", apply:(p)=>{p.staMax+=10; p.staRegen+=1} },
+    { id:"plating", name:"Platten-Optimierung", desc:"+2 Armor max", apply:(p)=>{p.armorMax+=2; p.armor+=2} },
+    { id:"scav", name:"Schrott-Instinkt", desc:"Caches geben +35% mehr Credits", apply:(p)=>{p.cashBonus+=0.35} },
+    { id:"ghost", name:"Ghost Route", desc:"Gegner sehen dich 1 Tile später", apply:(p)=>{p.stealth+=1} },
+    { id:"fieldtech", name:"Field Tech", desc:"Tech-Action: +1 Effekt", apply:(p)=>{p.techBonus+=1} },
+  ];
+
+  const META_UPGRADES = [
+    { id:"m_hp", name:"Meta: +6 HP Start", cost:20, desc:"Du startest tougher. Revolutionär.", applyMeta:(m)=>m.startHp+=6 },
+    { id:"m_med", name:"Meta: Medkit Start", cost:18, desc:"Ein Medkit im Inventar am Start.", applyMeta:(m)=>m.startItems.push("medkit") },
+    { id:"m_armor", name:"Meta: +1 Armor Start", cost:24, desc:"Start mit etwas Schutz.", applyMeta:(m)=>m.startArmor+=1 },
+    { id:"m_map", name:"Meta: Kartensense", cost:22, desc:"Minimap zeigt entdeckte Tiles größer & klarer.", applyMeta:(m)=>m.mapSense=true },
+    { id:"m_smg", name:"Meta: SMG Start", cost:30, desc:"Startwaffe wird SMG.", applyMeta:(m)=>m.startWeapon="smg" },
+  ];
+
+  // ---------- State ----------
+  const S = {
+    // persistent meta
+    meta: safeLocalGet("ir9_meta_v1", {
+      intel: 0,
+      purchased: [],
+      startHp: 0,
+      startArmor: 0,
+      startWeapon: "knife",
+      startItems: [],
+      mapSense: false
+    }),
+
+    // run state
+    run: null,
+
+    // view
+    zoom: 1.0,
+    cam: {x:0,y:0},
+    reduceMotion: safeLocalGet("ir9_rm_v1", false),
+    codex: safeLocalGet("ir9_codex_v1", { items:{}, perks:{}, enemies:{} }),
+  };
+
+  // apply purchased meta to computed meta profile (idempotent)
+  function computeMetaProfile(){
+    const base = {
+      intel: S.meta.intel|0,
+      purchased: [...(S.meta.purchased||[])],
+      startHp: 0,
+      startArmor: 0,
+      startWeapon: "knife",
+      startItems: [],
+      mapSense: false
+    };
+    for(const id of base.purchased){
+      const up = META_UPGRADES.find(x=>x.id===id);
+      if(up) up.applyMeta(base);
+    }
+    // keep intel/purchased stable
+    base.intel = S.meta.intel|0;
+    base.purchased = base.purchased;
+    return base;
+  }
+
+  // ---------- Logging ----------
+  function addLog(html, cls="line"){
+    const div = document.createElement("div");
+    div.className = cls;
+    div.innerHTML = html;
+    logEl.appendChild(div);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+  function logInfo(msg){ addLog(escapeHtml(msg), "line"); }
+  function logMuted(msg){ addLog(escapeHtml(msg), "line muted"); }
+  function logGood(msg){ addLog(escapeHtml(msg), "line good"); }
+  function logWarn(msg){ addLog(escapeHtml(msg), "line warn"); }
+  function logBad(msg){ addLog(escapeHtml(msg), "line bad"); }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    }[c]));
+  }
+
+  // ---------- Run init ----------
+  function newSeed(){
+    // short seed, readable
+    const a = Math.random().toString(36).slice(2,6).toUpperCase();
+    const b = Math.random().toString(36).slice(2,6).toUpperCase();
+    return `IR9-${a}-${b}`;
+  }
+
+  function startRun(seedStr){
+    const meta = computeMetaProfile();
+    const seed = hashStrToSeed(seedStr);
+    const rng = mulberry32(seed);
+
+    const w = 52, h = 34; // moderate size
+    const map = genMap(w, h, rng);
+
+    // objective type (adventure-ish)
+    const objectives = [
+      { id:"relay", title:"Relay Tower reaktivieren", desc:"Finde ★, stelle Verbindung her, dann zum Exit ⟡." },
+      { id:"blackbox", title:"Black Box sichern", desc:"Finde ★, extrahiere Daten, dann zum Exit ⟡." },
+      { id:"hostage", title:"Schattenkontakt bergen", desc:"Finde ★, triff Entscheidung, dann zum Exit ⟡." },
+    ];
+    const obj = pick(rng, objectives);
+
+    // place special tiles
+    const start = pickFloorFar(map, rng, null);
+    placeTile(map, start.x, start.y, TILE.FLOOR);
+
+    const objective = pickFloorFar(map, rng, start);
+    placeTile(map, objective.x, objective.y, TILE.OBJECTIVE);
+
+    const exit = pickFloorFar(map, rng, objective);
+    placeTile(map, exit.x, exit.y, TILE.EXIT);
+
+    // traders/caches/anomalies
+    const traderCount = 1 + (chance(rng, 0.35) ? 1 : 0);
+    for(let i=0;i<traderCount;i++){
+      const p = pickFloorFar(map, rng, start);
+      placeTile(map, p.x, p.y, TILE.TRADER);
+    }
+    const cacheCount = 6 + Math.floor(rng()*4);
+    for(let i=0;i<cacheCount;i++){
+      const p = pickFloor(map, rng);
+      if(map.t[p.y][p.x]===TILE.FLOOR) placeTile(map, p.x, p.y, TILE.CACHE);
+    }
+    const hazCount = 10 + Math.floor(rng()*8);
+    for(let i=0;i<hazCount;i++){
+      const p = pickFloor(map, rng);
+      if(map.t[p.y][p.x]===TILE.FLOOR && dist(p, start) > 6 && chance(rng, 0.55)) placeTile(map, p.x, p.y, TILE.HAZARD);
+    }
+
+    // run stats
+    const danger = 1;
+    const player = {
+      x: start.x, y: start.y,
+      hpMax: 44 + meta.startHp,
+      hp: 44 + meta.startHp,
+      staMax: 36,
+      sta: 36,
+      staRegen: 2,
+      armorMax: 2 + meta.startArmor,
+      armor: 2 + meta.startArmor,
+      level: 1,
+      xp: 0,
+      xpNext: 18,
+      credits: 0,
+      ammo: 0,
+      weapon: cloneItem(ITEM_DB.find(i=>i.id===meta.startWeapon) || ITEM_DB.find(i=>i.id==="knife")),
+      armorItem: cloneItem(ARMOR_DB.find(a=>a.id==="hoodie")),
+      perks: [],
+      critBonus: 0,
+      cashBonus: 0,
+      stealth: 0,
+      techBonus: 0,
+      visionBonus: 0
+    };
+
+    // apply meta start items
+    const inv = [];
+    for(const iid of (meta.startItems||[])){
+      const it = ITEM_DB.find(x=>x.id===iid);
+      if(it) inv.push(cloneItem(it));
+    }
+    // baseline items
+    inv.push(cloneItem(ITEM_DB.find(x=>x.id==="stim")));
+    inv.push(cloneItem(ITEM_DB.find(x=>x.id==="medkit")));
+    // ammo if ranged
+    if(player.weapon.ammo){
+      player.ammo = player.weapon.ammo;
+    }
+
+    // enemies
+    const enemies = [];
+    const baseEnemyCount = 10 + Math.floor(rng()*6);
+    for(let i=0;i<baseEnemyCount;i++){
+      const p = pickFloorFar(map, rng, start);
+      enemies.push(makeEnemy(rng, p.x, p.y, danger));
+    }
+
+    const discovered = Array.from({length:h}, ()=>Array.from({length:w}, ()=>0)); // 0 unknown, 1 discovered
+    const runFlags = {
+      turns: 0,
+      danger,
+      seedStr,
+      seed,
+      objective: obj,
+      objectivePos: objective,
+      exitPos: exit,
+      lastSeenObjective: false,
+      noSpawnTurns: 0,
+      didObjective: false,
+      runOver: false,
+      win: false
+    };
+
+    const run = {
+      rng, map, player, enemies, discovered, inv,
+      danger,
+      runFlags,
+      events: {
+        caches: new Set(),
+        traders: new Set(),
+        storyDone: false
+      },
+      view: {
+        fov: 6,
+        msgCooldown: 0
+      }
+    };
+
+    // upgrade vision via armor
+    if(player.armorItem?.vision) player.visionBonus += player.armorItem.vision;
+
+    S.run = run;
+    S.cam.x = player.x;
+    S.cam.y = player.y;
+    S.zoom = 1.0;
+    logEl.innerHTML = "";
+
+    runStatus.textContent = "läuft";
+    seedLabel.textContent = seedStr;
+    dangerLabel.textContent = roman(danger);
+    objectiveLabel.textContent = obj.title;
+
+    logGood(`Run gestartet: <b>${escapeHtml(obj.title)}</b>`);
+    logMuted(obj.desc);
+    logInfo(`Tipp: Halte dich nicht zu lange in Anomalien auf. Die Welt merkt sich sowas.`);
+
+    // discover around start
+    updateFov();
+    updateHUD();
+    renderAll();
+    startRainAmbience();
+
+    // unlock codex baseline
+    rememberCodexItem(player.weapon);
+    rememberCodexItem(player.armorItem);
+
+    // show quick intro (once per browser)
+    if(!safeLocalGet("ir9_intro_shown_v1", false)){
+      safeLocalSet("ir9_intro_shown_v1", true);
+      showHelpModal();
+    }
+  }
+
+  function endRun(win, reason){
+    if(!S.run || S.run.runFlags.runOver) return;
+    S.run.runFlags.runOver = true;
+    S.run.runFlags.win = !!win;
+
+    stopRainAmbience();
+
+    const turns = S.run.runFlags.turns;
+    const kills = S.run.runFlags.kills||0;
+    const didObj = S.run.runFlags.didObjective;
+
+    // meta intel reward
+    let intelGain = 0;
+    intelGain += Math.min(30, Math.floor(turns/12));
+    intelGain += Math.min(40, kills * 2);
+    if(didObj) intelGain += 18;
+    if(win) intelGain += 20;
+
+    S.meta.intel = (S.meta.intel|0) + intelGain;
+    safeLocalSet("ir9_meta_v1", S.meta);
+
+    logWarn(`Run beendet: ${escapeHtml(reason)}`);
+    logInfo(`Auswertung: Turns=${turns}, Kills=${kills}, Intel +${intelGain}`);
+
+    showModal({
+      title: win ? "Extraktion erfolgreich" : "Run verloren",
+      body: `
+        <p class="small">${escapeHtml(reason)}</p>
+        <div class="card" style="margin:12px 0">
+          <div class="h"><span>Auswertung</span><span class="tag">Intel +${intelGain}</span></div>
+          <div class="p">
+            Turns: <b>${turns}</b><br/>
+            Kills: <b>${kills}</b><br/>
+            Ziel: <b>${escapeHtml(S.run.runFlags.objective.title)}</b> (${didObj ? "erledigt" : "offen"})<br/>
+            Seed: <b>${escapeHtml(S.run.runFlags.seedStr)}</b>
+          </div>
+        </div>
+        <div class="tagrow" style="justify-content:flex-end">
+          <button class="tiny" id="mClose">Schließen</button>
+          <button class="primary" id="mMeta">Meta öffnen</button>
+          <button class="good" id="mRestart">Neuer Run</button>
+        </div>
+      `,
+      onMount: () => {
+        $("#mClose").onclick = () => closeModal();
+        $("#mMeta").onclick = () => { closeModal(); showMetaModal(); };
+        $("#mRestart").onclick = () => { closeModal(); startRun(newSeed()); };
+      }
+    });
+
+    updateHUD();
+    renderAll();
+  }
+
+  // ---------- Map generation ----------
+  function genMap(w, h, rng){
+    // Start with walls
+    const t = Array.from({length:h}, ()=>Array.from({length:w}, ()=>TILE.WALL));
+
+    // carve with drunkard + rooms
+    function carve(x,y, r=1){
+      for(let yy=y-r; yy<=y+r; yy++){
+        for(let xx=x-r; xx<=x+r; xx++){
+          if(xx>0 && yy>0 && xx<w-1 && yy<h-1) t[yy][xx]=TILE.FLOOR;
+        }
+      }
+    }
+
+    // rooms
+    const roomCount = 10 + Math.floor(rng()*6);
+    for(let i=0;i<roomCount;i++){
+      const rw = 5 + Math.floor(rng()*10);
+      const rh = 4 + Math.floor(rng()*8);
+      const rx = 1 + Math.floor(rng()*(w-rw-2));
+      const ry = 1 + Math.floor(rng()*(h-rh-2));
+      for(let y=ry; y<ry+rh; y++){
+        for(let x=rx; x<rx+rw; x++){
+          t[y][x]=TILE.FLOOR;
+        }
+      }
+    }
+
+    // drunkard walk corridors
+    let x = Math.floor(w/2), y = Math.floor(h/2);
+    carve(x,y,1);
+    const steps = w*h*2.2;
+    for(let i=0;i<steps;i++){
+      const dir = Math.floor(rng()*4);
+      if(dir===0) y--;
+      if(dir===1) y++;
+      if(dir===2) x--;
+      if(dir===3) x++;
+      x = clamp(x, 2, w-3);
+      y = clamp(y, 2, h-3);
+      carve(x,y, chance(rng,0.25)?1:0);
+    }
+
+    // smooth: turn isolated walls into floor
+    for(let k=0;k<2;k++){
+      const tt = t.map(row=>row.slice());
+      for(let yy=1; yy<h-1; yy++){
+        for(let xx=1; xx<w-1; xx++){
+          let floorN=0;
+          for(let oy=-1; oy<=1; oy++){
+            for(let ox=-1; ox<=1; ox++){
+              if(ox===0 && oy===0) continue;
+              if(t[yy+oy][xx+ox]!==TILE.WALL) floorN++;
+            }
+          }
+          if(t[yy][xx]===TILE.WALL && floorN>=6) tt[yy][xx]=TILE.FLOOR;
+          if(t[yy][xx]!==TILE.WALL && floorN<=2) tt[yy][xx]=TILE.WALL;
+        }
+      }
+      for(let yy=0; yy<h; yy++) t[yy]=tt[yy];
+    }
+
+    // ensure connectivity: keep biggest floor component
+    const comp = largestFloorComponent(t);
+    for(let yy=1; yy<h-1; yy++){
+      for(let xx=1; xx<w-1; xx++){
+        if(t[yy][xx]!==TILE.WALL && !comp.has(yy*w+xx)) t[yy][xx]=TILE.WALL;
+      }
+    }
+
+    return { w,h,t };
+  }
+
+  function largestFloorComponent(t){
+    const h=t.length, w=t[0].length;
+    const seen = new Set();
+    let best = new Set();
+
+    const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    for(let y=1;y<h-1;y++){
+      for(let x=1;x<w-1;x++){
+        if(t[y][x]===TILE.WALL) continue;
+        const key=y*w+x;
+        if(seen.has(key)) continue;
+
+        const q=[[x,y]];
+        const comp=new Set([key]);
+        seen.add(key);
+
+        while(q.length){
+          const [cx,cy]=q.pop();
+          for(const [dx,dy] of dirs){
+            const nx=cx+dx, ny=cy+dy;
+            const k=ny*w+nx;
+            if(nx<=0||ny<=0||nx>=w-1||ny>=h-1) continue;
+            if(t[ny][nx]===TILE.WALL) continue;
+            if(seen.has(k)) continue;
+            seen.add(k);
+            comp.add(k);
+            q.push([nx,ny]);
+          }
+        }
+        if(comp.size>best.size) best=comp;
+      }
+    }
+    return best;
+  }
+
+  function placeTile(map, x, y, tile){
+    map.t[y][x]=tile;
+  }
+  function pickFloor(map, rng){
+    // brute force random tries
+    for(let i=0;i<6000;i++){
+      const x = 1 + Math.floor(rng()*(map.w-2));
+      const y = 1 + Math.floor(rng()*(map.h-2));
+      if(map.t[y][x]===TILE.FLOOR) return {x,y};
+    }
+    // fallback scan
+    for(let y=1;y<map.h-1;y++) for(let x=1;x<map.w-1;x++) if(map.t[y][x]===TILE.FLOOR) return {x,y};
+    return {x:2,y:2};
+  }
+  function pickFloorFar(map, rng, from){
+    let best = null, bestD = -1;
+    for(let i=0;i<60;i++){
+      const p = pickFloor(map, rng);
+      const d = from ? dist(p, from) : 0;
+      if(d > bestD){
+        bestD = d; best = p;
+      }
+    }
+    return best || pickFloor(map, rng);
+  }
+  function dist(a,b){
+    const dx=a.x-b.x, dy=a.y-b.y;
+    return Math.sqrt(dx*dx+dy*dy);
+  }
+
+  // ---------- Enemies ----------
+  function makeEnemy(rng, x, y, danger){
+    const types = [
+      { id:"drone", name:"Streifendrohne", hp:10, atk:3, armor:0, ai:"ranged", desc:"Summt. Ist selten empathisch." },
+      { id:"raider", name:"Gassen-Raider", hp:14, atk:4, armor:1, ai:"melee", desc:"Schnell, frech, nervig." },
+      { id:"anomaly", name:"Glitch-Spawn", hp:12, atk:5, armor:0, ai:"melee", desc:"Mag Anomalien. Du nicht." },
+    ];
+    const base = pick(rng, types);
+    const hp = base.hp + (danger-1)*3 + Math.floor(rng()*3);
+    const atk = base.atk + (danger-1);
+    const armor = base.armor + (danger>=3?1:0);
+    return {
+      id: base.id,
+      name: base.name,
+      desc: base.desc,
+      x,y,
+      hpMax: hp,
+      hp,
+      armor,
+      atk,
+      ai: base.ai,
+      aggro: 0
+    };
+  }
+
+  // ---------- Items ----------
+  function cloneItem(it){ return it ? JSON.parse(JSON.stringify(it)) : null; }
+
+  function rarityName(r){
+    return ["Common","Uncommon","Rare","Epic"][clamp(r,0,3)];
+  }
+
+  function rememberCodexItem(item){
+    if(!item) return;
+    S.codex.items[item.id] = {
+      name: item.name, type:item.type, desc: item.desc || "",
+      rarity: item.rarity ?? 0
+    };
+    safeLocalSet("ir9_codex_v1", S.codex);
+  }
+  function rememberCodexPerk(perk){
+    if(!perk) return;
+    S.codex.perks[perk.id] = { name: perk.name, desc: perk.desc };
+    safeLocalSet("ir9_codex_v1", S.codex);
+  }
+  function rememberCodexEnemy(e){
+    if(!e) return;
+    S.codex.enemies[e.id] = { name: e.name, desc: e.desc || "" };
+    safeLocalSet("ir9_codex_v1", S.codex);
+  }
+
+  // ---------- Player actions ----------
+  function heal(s, amt){
+    const p=s.player;
+    const before = p.hp;
+    p.hp = clamp(p.hp + amt, 0, p.hpMax);
+    logGood(`+${p.hp-before} HP.`);
+    playClick(540, 0.06);
+  }
+  function gainSta(s, amt){
+    const p=s.player;
+    const before = p.sta;
+    p.sta = clamp(p.sta + amt, 0, p.staMax);
+    logGood(`+${p.sta-before} Stamina.`);
+    playClick(480, 0.06);
+  }
+
+  function spendSta(p, n){
+    p.sta = clamp(p.sta - n, 0, p.staMax);
+  }
+
+  // ---------- Turns ----------
+  function canMoveTo(x,y){
+    const r=S.run;
+    if(!r) return false;
+    if(x<0||y<0||x>=r.map.w||y>=r.map.h) return false;
+    const tile = r.map.t[y][x];
+    if(TILE_INFO[tile]?.blocks) return false;
+    // can't step onto enemy? allow but triggers combat immediately; we still allow move
+    return true;
+  }
+
+  function enemyAt(x,y){
+    const r=S.run;
+    if(!r) return null;
+    return r.enemies.find(e=>e.hp>0 && e.x===x && e.y===y) || null;
+  }
+
+  function takeTurn(){
+    const r=S.run;
+    if(!r || r.runFlags.runOver) return;
+
+    r.runFlags.turns++;
+
+    // regen stamina a bit
+    const p=r.player;
+    p.sta = clamp(p.sta + p.staRegen, 0, p.staMax);
+
+    // hazard tick
+    const tile = r.map.t[p.y][p.x];
+    if(tile===TILE.HAZARD){
+      const dmg = 2 + Math.floor(r.danger/2);
+      applyDamageToPlayer(dmg, "Anomalie");
+      if(chance(r.rng, 0.12)) logWarn("Die Luft flimmert. Dein HUD beschwert sich leise.");
+    }
+
+    // scale danger over time
+    if(r.runFlags.turns % 60 === 0){
+      r.danger++;
+      dangerLabel.textContent = roman(r.danger);
+      logWarn(`Gefahr steigt auf ${roman(r.danger)}.`);
+      // spawn extra enemy
+      if(r.runFlags.noSpawnTurns<=0){
+        const sp = pickFloorFar(r.map, r.rng, {x:p.x,y:p.y});
+        r.enemies.push(makeEnemy(r.rng, sp.x, sp.y, r.danger));
+        logMuted("Du hörst Schritte, die nicht deine sind.");
+      }
+    }
+
+    if(r.runFlags.noSpawnTurns>0) r.runFlags.noSpawnTurns--;
+
+    // enemy AI move/attack
+    enemyPhase();
+
+    // update fov + hud + render
+    updateFov();
+    updateHUD();
+    renderAll();
+
+    // check death
+    if(p.hp<=0){
+      endRun(false, "Du bist gefallen. Die Stadt sammelt ihre Schulden ein.");
+    }
+  }
+
+  function enemyPhase(){
+    const r=S.run;
+    if(!r) return;
+    const rng=r.rng;
+    const p=r.player;
+
+    const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    for(const e of r.enemies){
+      if(e.hp<=0) continue;
+
+      rememberCodexEnemy(e);
+
+      const d = Math.abs(e.x-p.x)+Math.abs(e.y-p.y);
+
+      // stealth delays aggro slightly
+      const stealthDelay = p.stealth|0;
+      const sees = d <= (7 - stealthDelay);
+
+      if(sees) e.aggro = clamp(e.aggro + 2, 0, 10);
+      else e.aggro = clamp(e.aggro - 1, 0, 10);
+
+      // if adjacent -> attack
+      if(d===1){
+        const dmg = Math.max(1, e.atk + (r.danger-1) - Math.floor(rng()*2));
+        applyDamageToPlayer(dmg, e.name);
+        continue;
+      }
+
+      // ranged poke
+      if(e.ai==="ranged" && d<=4 && lineOfSight(r.map, e.x,e.y,p.x,p.y)){
+        if(chance(rng, 0.55)){
+          const dmg = Math.max(1, e.atk - 1 + (r.danger-1));
+          applyDamageToPlayer(dmg, e.name);
+          logWarn(`${e.name} schießt aus der Deckung.`);
+          continue;
+        }
+      }
+
+      // move towards player if aggro
+      if(e.aggro>=3){
+        // greedy step
+        let best=null, bestD=1e9;
+        for(const [dx,dy] of dirs){
+          const nx=e.x+dx, ny=e.y+dy;
+          if(!canEnemyMove(nx,ny)) continue;
+          const nd = Math.abs(nx-p.x)+Math.abs(ny-p.y);
+          if(nd<bestD){ bestD=nd; best={x:nx,y:ny}; }
+        }
+        if(best){
+          // avoid stepping on another enemy
+          if(!enemyAt(best.x,best.y) && !(best.x===p.x && best.y===p.y)){
+            e.x=best.x; e.y=best.y;
+          }
+        }
+      }else{
+        // idle wander
+        if(chance(rng, 0.25)){
+          const [dx,dy]=pick(rng, dirs);
+          const nx=e.x+dx, ny=e.y+dy;
+          if(canEnemyMove(nx,ny) && !enemyAt(nx,ny) && !(nx===p.x && ny===p.y)){
+            e.x=nx; e.y=ny;
+          }
+        }
+      }
+    }
+  }
+
+  function canEnemyMove(x,y){
+    const r=S.run;
+    if(!r) return false;
+    if(x<0||y<0||x>=r.map.w||y>=r.map.h) return false;
+    const tile=r.map.t[y][x];
+    if(TILE_INFO[tile]?.blocks) return false;
+    return true;
+  }
+
+  function applyDamageToPlayer(amount, source){
+    const r=S.run;
+    if(!r) return;
+    const p=r.player;
+
+    let dmg = amount;
+    // armor absorbs first
+    if(p.armor>0){
+      const absorb = Math.min(p.armor, dmg);
+      p.armor -= absorb;
+      dmg -= absorb;
+      if(absorb>0) logMuted(`Schild fängt ${absorb} ab.`);
+    }
+    if(dmg>0){
+      p.hp = clamp(p.hp - dmg, 0, p.hpMax);
+      logBad(`-${dmg} HP (${source}).`);
+      playHit();
+    }else{
+      playClick(260, 0.03);
+    }
+  }
+
+  // ---------- Movement / Interaction ----------
+  function movePlayer(dx,dy){
+    const r=S.run;
+    if(!r || r.runFlags.runOver) return;
+    const p=r.player;
+    const nx=p.x+dx, ny=p.y+dy;
+    if(!canMoveTo(nx,ny)){
+      playClick(220, 0.04);
+      return;
+    }
+
+    p.x=nx; p.y=ny;
+    playClick(360, 0.03);
+
+    // step onto enemy triggers combat mini-encounter
+    const e = enemyAt(nx,ny);
+    if(e){
+      openCombat(e);
+      return; // combat consumes turn inside modal
+    }
+
+    // tile triggers
+    const tile = r.map.t[ny][nx];
+    if(tile===TILE.CACHE){
+      openCache(nx,ny);
+    } else if(tile===TILE.TRADER){
+      openTrader(nx,ny);
+    } else if(tile===TILE.OBJECTIVE){
+      openObjective();
+    } else if(tile===TILE.EXIT){
+      openExit();
+    } else if(tile===TILE.HAZARD && chance(r.rng,0.08)){
+      logWarn("Ein kurzer Kopfschmerz. Nur ein kurzer... sicher.");
+    }
+
+    takeTurn();
+  }
+
+  function interact(){
+    const r=S.run;
+    if(!r || r.runFlags.runOver) return;
+    const p=r.player;
+    const tile = r.map.t[p.y][p.x];
+    if(tile===TILE.CACHE) return openCache(p.x,p.y);
+    if(tile===TILE.TRADER) return openTrader(p.x,p.y);
+    if(tile===TILE.OBJECTIVE) return openObjective();
+    if(tile===TILE.EXIT) return openExit();
+
+    // look around: nearest interesting
+    const near = findNearestInteresting();
+    if(near){
+      logInfo(`In der Nähe: ${near.label} (${near.d} Schritte).`);
+    }else{
+      logMuted("Nichts zum Interagieren. Außer dem Gefühl, beobachtet zu werden.");
+    }
+    playClick(420,0.05);
+  }
+
+  function findNearestInteresting(){
+    const r=S.run;
+    if(!r) return null;
+    const p=r.player;
+    let best=null;
+    const interesting = [TILE.CACHE, TILE.TRADER, TILE.OBJECTIVE, TILE.EXIT];
+    for(let y=0;y<r.map.h;y++){
+      for(let x=0;x<r.map.w;x++){
+        const t=r.map.t[y][x];
+        if(!interesting.includes(t)) continue;
+        const d=Math.abs(x-p.x)+Math.abs(y-p.y);
+        if(best==null || d<best.d){
+          const label = TILE_INFO[t].name;
+          best={x,y,d,label};
+        }
+      }
+    }
+    return best;
+  }
+
+  function waitTurn(){
+    const r=S.run;
+    if(!r || r.runFlags.runOver) return;
+    logMuted("Du wartest. Die Welt wartet nicht.");
+    takeTurn();
+  }
+
+  // ---------- Encounters ----------
+  function openCache(x,y){
+    const r=S.run;
+    if(!r) return;
+    const key = y*r.map.w+x;
+    if(r.events.caches.has(key)){
+      logMuted("Cache ist leer. Wie deine Geduld.");
+      playClick(240,0.04);
+      return;
+    }
+    r.events.caches.add(key);
+
+    const rng=r.rng;
+    const p=r.player;
+
+    // roll loot
+    const cashBase = 8 + Math.floor(rng()*18) + (r.danger-1)*4;
+    const cash = Math.floor(cashBase * (1 + p.cashBonus));
+    p.credits += cash;
+
+    let dropped = [];
+    if(chance(rng, 0.55)){
+      dropped.push(cloneItem(pickWeightedItem(rng)));
+    }
+    if(chance(rng, 0.28)){
+      dropped.push(cloneItem(pickWeightedArmor(rng)));
+    }
+    if(chance(rng, 0.35)){
+      dropped.push(cloneItem(pick(rng, [ITEM_DB.find(x=>x.id==="medkit"), ITEM_DB.find(x=>x.id==="stim"), ITEM_DB.find(x=>x.id==="nanoplates")])));
+    }
+
+    const invCap = 10;
+    const canTake = invCap - r.inv.length;
+
+    logGood(`Cache geplündert: +${cash} Credits.`);
+    playClick(520,0.06);
+
+    if(dropped.length===0){
+      logMuted("Nur Staub und ein paar alte IR9-Logos. Nostalgie zählt nicht als Loot.");
+      updateHUD(); renderAll();
+      return;
+    }
+
+    // if no space, offer choices
+    const body = `
+      <p class="small">Du findest Loot. Inventarplätze: <b>${r.inv.length}/${invCap}</b></p>
+      <div class="grid3">
+        ${dropped.map((it,idx)=>`
+          <div class="choice" data-idx="${idx}">
+            <div class="t">${escapeHtml(it.name)} <span class="tag" style="margin-left:8px">${escapeHtml(rarityName(it.rarity||0))}</span></div>
+            <div class="d">${escapeHtml(it.desc || describeGear(it))}</div>
+          </div>
+        `).join("")}
+      </div>
+      <div class="hr"></div>
+      <div class="tagrow" style="justify-content:flex-end">
+        <button class="tiny" id="cClose">Schließen</button>
+      </div>
+    `;
+    showModal({
+      title: "Cache",
+      body,
+      onMount: () => {
+        $("#cClose").onclick = () => closeModal();
+        $$(".choice", modalContent).forEach(el=>{
+          el.onclick = () => {
+            const idx = parseInt(el.getAttribute("data-idx"),10);
+            const it = dropped[idx];
+            if(!it) return;
+            if(r.inv.length>=invCap){
+              logWarn("Inventar voll. Entferne etwas im Inventar-Tab.");
+              playClick(180,0.06);
+              return;
+            }
+            r.inv.push(it);
+            rememberCodexItem(it);
+            logGood(`Aufgenommen: ${it.name}`);
+            playClick(620,0.05);
+            el.style.opacity = .4;
+            el.style.pointerEvents = "none";
+            updateHUD(); renderAll(); renderRight();
+          };
+        });
+      }
+    });
+
+    updateHUD();
+    renderAll();
+    renderRight();
+  }
+
+  function pickWeightedItem(rng){
+    // Weighted by rarity
+    const pool = ITEM_DB.filter(i=>i.type==="consumable");
+    const weights = pool.map(i => 1 / (1 + (i.rarity||0)*1.25));
+    return weightedPick(rng, pool, weights);
+  }
+  function pickWeightedArmor(rng){
+    const pool = ARMOR_DB;
+    const weights = pool.map(i => 1 / (1 + (i.rarity||0)*1.4));
+    return weightedPick(rng, pool, weights);
+  }
+  function weightedPick(rng, items, weights){
+    let sum = 0;
+    for(const w of weights) sum += w;
+    let r = rng()*sum;
+    for(let i=0;i<items.length;i++){
+      r -= weights[i];
+      if(r<=0) return items[i];
+    }
+    return items[items.length-1];
+  }
+
+  function describeGear(it){
+    if(it.type==="weapon"){
+      const pierce = it.pierce ? `, Pierce ${it.pierce}` : "";
+      const ammo = it.ammo ? `, Ammo ${it.ammo}` : "";
+      return `ATK ${it.atk}, Crit ${(Math.round((it.crit||0)*100))}%${pierce}${ammo}`;
+    }
+    if(it.type==="armor"){
+      return `Armor +${it.arm}${it.vision?`, Sicht +${it.vision}`:""}`;
+    }
+    return it.desc || "";
+  }
+
+  function openTrader(x,y){
+    const r=S.run;
+    if(!r) return;
+    const key = y*r.map.w+x;
+    if(!r.events.traders.has(key)){
+      r.events.traders.add(key);
+      logInfo("Händler: \"IR9? Hab euch schon mal... irgendwo gesehen.\"");
+    }
+    const rng=r.rng;
+
+    const stock = [];
+    stock.push(cloneItem(pickWeightedArmor(rng)));
+    stock.push(cloneItem(pick(rng, [ITEM_DB.find(i=>i.id==="medkit"), ITEM_DB.find(i=>i.id==="stim"), ITEM_DB.find(i=>i.id==="scrambler"), ITEM_DB.find(i=>i.id==="nanoplates")])));
+    stock.push(cloneItem(pick(rng, ITEM_DB.filter(i=>i.type==="weapon"))));
+    stock.forEach(rememberCodexItem);
+
+    const prices = stock.map(it => {
+      const base = 18 + (it.rarity||0)*16 + (it.type==="weapon"?18:0);
+      const dangerTax = (r.danger-1)*6;
+      return base + dangerTax + Math.floor(rng()*7);
+    });
+
+    const invCap = 10;
+
+    showModal({
+      title: "Händler",
+      body: `
+        <p class="small">Du hast <b>${r.player.credits}</b> Credits. Inventar: <b>${r.inv.length}/${invCap}</b></p>
+        <div class="grid3">
+          ${stock.map((it,i)=>`
+            <div class="choice" data-buy="${i}">
+              <div class="t">${escapeHtml(it.name)} <span class="tag" style="margin-left:8px">${escapeHtml(rarityName(it.rarity||0))}</span></div>
+              <div class="d">${escapeHtml(it.desc || describeGear(it))}<br/><span class="tag" style="margin-top:8px; display:inline-block">Preis: ${prices[i]}</span></div>
+            </div>
+          `).join("")}
+        </div>
+        <div class="hr"></div>
+        <div class="tagrow" style="justify-content:flex-end">
+          <button class="tiny" id="tClose">Schließen</button>
+        </div>
+      `,
+      onMount: () => {
+        $("#tClose").onclick = () => closeModal();
+        $$(".choice", modalContent).forEach(el=>{
+          el.onclick = () => {
+            const idx = parseInt(el.getAttribute("data-buy"),10);
+            const it = stock[idx];
+            const cost = prices[idx];
+            if(!it) return;
+            if(r.player.credits < cost){
+              logWarn("Zu teuer. Kapitalismus gewinnt erneut.");
+              playClick(160,0.06);
+              return;
+            }
+            if(r.inv.length>=invCap){
+              logWarn("Inventar voll. Entferne was im Inventar-Tab.");
+              playClick(180,0.06);
+              return;
+            }
+            r.player.credits -= cost;
+            r.inv.push(it);
+            logGood(`Gekauft: ${it.name} (-${cost})`);
+            playClick(720,0.05);
+            el.style.opacity=.35;
+            el.style.pointerEvents="none";
+            updateHUD(); renderRight(); renderAll();
+          };
+        });
+      }
+    });
+  }
+
+  function openObjective(){
+    const r=S.run;
+    if(!r) return;
+    const f=r.runFlags;
+    if(f.didObjective){
+      logMuted("Ziel ist erledigt. Jetzt nur noch lebend raus.");
+      playClick(300,0.04);
+      return;
+    }
+
+    const rng=r.rng;
+    const p=r.player;
+
+    // narrative choice
+    const story = pick(rng, [
+      {
+        title:"Terminal am Relay Tower",
+        text:"Der Tower lebt noch. Das Terminal fordert einen Override. Nebenbei blinkt ein IR9-Insignia, als ob es dich erkennt.",
+        choices:[
+          { t:"Override: Stabil", d:"+XP, +Credits. Gefahr +1 (Lärm).", f:()=>{ gainXP(12); p.credits+=16; r.danger++; logWarn("Der Tower pfeift. Es klingt nach Aufmerksamkeit."); } },
+          { t:"Override: Leise", d:"+XP. Keine Gefahrsteigerung. -Stamina.", f:()=>{ gainXP(14); spendSta(p,10); logInfo("Du arbeitest vorsichtig. Langsam. Wirksam."); } },
+          { t:"Override: Brutal", d:"+Credits, +Ammo. -HP (Rückstoß).", f:()=>{ p.credits+=28; p.ammo+=10; applyDamageToPlayer(4,"Rückkopplung"); logWarn("Funktioniert. Tut weh."); } }
+        ]
+      },
+      {
+        title:"Black Box im Schutt",
+        text:"Du findest die Box. Sie ist heiß, als wäre sie gerade erst gefallen. Ein Glitch flimmert darüber.",
+        choices:[
+          { t:"Sichern & extrahieren", d:"+XP, +Intel im Run. Kleine Anomalieschäden.", f:()=>{ gainXP(16); p.credits+=10; applyDamageToPlayer(3,"Glitch"); } },
+          { t:"Nur Daten ziehen", d:"+XP. Chance auf Perk.", f:()=>{ gainXP(14); if(chance(rng,0.35)) offerPerk(true); } },
+          { t:"Ködern (Trap)", d:"+Credits. Gefahr sinkt kurz.", f:()=>{ p.credits+=22; r.runFlags.noSpawnTurns = Math.max(r.runFlags.noSpawnTurns, 12); logGood("Du lenkst sie ab. Fürs Erste."); } }
+        ]
+      },
+      {
+        title:"Schattenkontakt",
+        text:"Eine Person mit IR9-Patch sitzt im Dunkeln. \"Du bist spät\", sagt sie. Und das ist erschreckend korrekt.",
+        choices:[
+          { t:"Evakuieren", d:"+XP, +HP Max. Gefahr +1.", f:()=>{ gainXP(16); p.hpMax+=4; p.hp+=4; r.danger++; logWarn("Zwei Personen machen mehr Geräusche."); } },
+          { t:"Ausrüsten", d:"+Armor, +Credits. -Stamina.", f:()=>{ p.armorMax+=2; p.armor+=2; p.credits+=14; spendSta(p,8); logInfo("Du teilst Ressourcen. Seltsam menschlich."); } },
+          { t:"Ignorieren", d:"+Credits. -Intel am Run-Ende.", f:()=>{ p.credits+=26; r.runFlags.penaltyIntel = (r.runFlags.penaltyIntel||0) + 12; logWarn("Du entscheidest dich für Effizienz. Klassiker."); } }
+        ]
+      }
+    ]);
+
+    showModal({
+      title: story.title,
+      body: `
+        <p class="small">${escapeHtml(story.text)}</p>
+        <div class="grid3">
+          ${story.choices.map((c,idx)=>`
+            <div class="choice" data-choice="${idx}">
+              <div class="t">${escapeHtml(c.t)}</div>
+              <div class="d">${escapeHtml(c.d)}</div>
+            </div>
+          `).join("")}
+        </div>
+        <div class="hr"></div>
+        <div class="tagrow" style="justify-content:flex-end">
+          <button class="tiny" id="oClose">Abbrechen</button>
+        </div>
+      `,
+      onMount: () => {
+        $("#oClose").onclick = () => closeModal();
+        $$(".choice", modalContent).forEach(el=>{
+          el.onclick = () => {
+            const idx = parseInt(el.getAttribute("data-choice"),10);
+            const c = story.choices[idx];
+            if(!c) return;
+            closeModal();
+            c.f();
+            r.runFlags.didObjective = true;
+            logGood("Ziel abgeschlossen. Jetzt Exit ⟡ finden.");
+            // increase danger slightly
+            r.danger++;
+            dangerLabel.textContent = roman(r.danger);
+            // convert objective tile into floor (optional)
+            r.map.t[r.player.y][r.player.x] = TILE.FLOOR;
+
+            updateHUD(); renderAll(); renderRight();
+            takeTurn();
+          };
+        });
+      }
+    });
+  }
+
+  function openExit(){
+    const r=S.run;
+    if(!r) return;
+    if(!r.runFlags.didObjective){
+      logWarn("Exit ist gesperrt. Ziel zuerst. Weil natürlich.");
+      playClick(170,0.06);
+      return;
+    }
+    showModal({
+      title: "Exit ⟡",
+      body: `
+        <p class="small">Du stehst am Exit. Die Luft riecht nach Freiheit und schlechten Entscheidungen.</p>
+        <div class="grid3">
+          <div class="choice" id="exLeave">
+            <div class="t">Extrahieren</div>
+            <div class="d">Run beenden (Win). Intel wird gutgeschrieben.</div>
+          </div>
+          <div class="choice" id="exStay">
+            <div class="t">Noch plündern</div>
+            <div class="d">Bleiben. Gefahr steigt mit der Zeit. Loot ist nie genug.</div>
+          </div>
+          <div class="choice" id="exHeal">
+            <div class="t">Kurz sammeln</div>
+            <div class="d">+Stamina-Regeneration für 10 Turns (aber du wartest).</div>
+          </div>
+        </div>
+        <div class="hr"></div>
+        <div class="tagrow" style="justify-content:flex-end">
+          <button class="tiny" id="exClose">Schließen</button>
+        </div>
+      `,
+      onMount: () => {
+        $("#exClose").onclick = () => closeModal();
+        $("#exLeave").onclick = () => {
+          closeModal();
+          endRun(true, "Du wurdest extrahiert. IR9 lebt, um weiter zu improvisieren.");
+        };
+        $("#exStay").onclick = () => {
+          closeModal();
+          logInfo("Du bleibst. Natürlich bleibst du.");
+          playClick(260,0.05);
+        };
+        $("#exHeal").onclick = () => {
+          closeModal();
+          S.run.player.staRegen += 1;
+          S.run.runFlags.buffRegenTurns = 10;
+          logGood("Du fokussierst dich kurz. +1 Stamina Regen (10 Turns).");
+          waitTurn();
+        };
+      }
+    });
+  }
+
+  // ---------- Combat ----------
+  function openCombat(enemy){
+    const r=S.run;
+    if(!r) return;
+    const p=r.player;
+    if(!enemy || enemy.hp<=0) return;
+
+    const invCap=10;
+
+    const renderCombat = () => `
+      <p class="small">
+        <b>${escapeHtml(enemy.name)}</b> (${enemy.hp}/${enemy.hpMax} HP, Armor ${enemy.armor})<br/>
+        Du: ${p.hp}/${p.hpMax} HP, Armor ${p.armor}/${p.armorMax}, Stamina ${p.sta}/${p.staMax}
+      </p>
+
+      <div class="card">
+        <div class="h">
+          <span>Deine Ausrüstung</span>
+          <span class="tag">${escapeHtml(p.weapon.name)}</span>
+        </div>
+        <div class="p">
+          ${escapeHtml(describeGear(p.weapon))}<br/>
+          Ammo: <b>${p.weapon.ammo ? p.ammo : "—"}</b> • Inventar: <b>${r.inv.length}/${invCap}</b>
+        </div>
+      </div>
+
+      <div class="grid3" style="margin-top:10px">
+        <div class="choice" id="aStrike">
+          <div class="t">Strike</div>
+          <div class="d">Normaler Angriff. Kostet Stamina.</div>
+        </div>
+        <div class="choice" id="aBurst">
+          <div class="t">Burst</div>
+          <div class="d">Nur bei Waffen mit Ammo. Mehr Schaden, mehr Stamina.</div>
+        </div>
+        <div class="choice" id="aTech">
+          <div class="t">Tech</div>
+          <div class="d">Stun-Chance. Skalierung mit Field Tech.</div>
+        </div>
+      </div>
+
+      <div class="grid3" style="margin-top:10px">
+        <div class="choice" id="aGuard">
+          <div class="t">Guard</div>
+          <div class="d">+1 Armor (kurz), weniger Schaden nächste Runde.</div>
+        </div>
+        <div class="choice" id="aItem">
+          <div class="t">Item</div>
+          <div class="d">Consumable benutzen (Medkit/Stims/etc.).</div>
+        </div>
+        <div class="choice" id="aFlee">
+          <div class="t">Fliehen</div>
+          <div class="d">Chance abhängig von Stamina. Misslingt manchmal.</div>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+      <div class="tagrow" style="justify-content:flex-end">
+        <button class="tiny" id="aClose">Schließen</button>
+      </div>
+    `;
+
+    showModal({
+      title:"Kontakt!",
+      body: renderCombat(),
+      onMount: () => wireCombat(enemy, renderCombat)
+    });
+  }
+
+  function wireCombat(enemy, renderCombat){
+    const r=S.run;
+    if(!r) return;
+    const p=r.player;
+
+    const refresh = () => {
+      modalContent.innerHTML = `
+        <h2 id="modalTitle">Kontakt!</h2>
+        ${renderCombat()}
+      `;
+      wireCombat(enemy, renderCombat); // rebind
+    };
+
+    $("#aClose").onclick = () => closeModal();
+
+    $("#aStrike").onclick = () => {
+      const cost = p.weapon.stam ?? 3;
+      if(p.sta < cost){ logWarn("Zu wenig Stamina."); playClick(160,0.05); return; }
+      spendSta(p, cost);
+      const dmg = rollPlayerDamage(false);
+      applyDamageToEnemy(enemy, dmg);
+      enemyCounter(enemy);
+      refreshAfterCombat(enemy, refresh);
+    };
+
+    $("#aBurst").onclick = () => {
+      if(!p.weapon.ammo){ logWarn("Keine Ammo-Waffe."); playClick(160,0.05); return; }
+      if(p.ammo<=0){ logWarn("Keine Munition."); playClick(160,0.05); return; }
+      const cost = (p.weapon.stam ?? 3) + 2;
+      if(p.sta < cost){ logWarn("Zu wenig Stamina."); playClick(160,0.05); return; }
+      spendSta(p, cost);
+      const shots = 2 + (chance(r.rng,0.25)?1:0);
+      let total=0;
+      const used = Math.min(p.ammo, shots);
+      p.ammo -= used;
+      for(let i=0;i<used;i++){
+        total += rollPlayerDamage(true);
+      }
+      applyDamageToEnemy(enemy, total);
+      logInfo(`Burst: ${used} Schüsse, ${total} Schaden.`);
+      enemyCounter(enemy);
+      refreshAfterCombat(enemy, refresh);
+    };
+
+    $("#aTech").onclick = () => {
+      const cost = 6;
+      if(p.sta < cost){ logWarn("Zu wenig Stamina."); playClick(160,0.05); return; }
+      spendSta(p, cost);
+
+      const bonus = p.techBonus|0;
+      const stunChance = clamp(0.20 + 0.08*bonus, 0, 0.55);
+      const dmg = 2 + bonus + Math.floor(r.rng()*3);
+
+      applyDamageToEnemy(enemy, dmg);
+      if(chance(r.rng, stunChance)){
+        logGood("Tech: Stun! Gegner verliert Konter.");
+        playClick(740,0.06);
+        // no counter
+      }else{
+        enemyCounter(enemy);
+      }
+      refreshAfterCombat(enemy, refresh);
+    };
+
+    $("#aGuard").onclick = () => {
+      const cost = 3;
+      if(p.sta < cost){ logWarn("Zu wenig Stamina."); playClick(160,0.05); return; }
+      spendSta(p, cost);
+      p.armor = clamp(p.armor + 1, 0, p.armorMax);
+      r.runFlags.guardTurns = 1;
+      logGood("Guard aktiv.");
+      enemyCounter(enemy);
+      refreshAfterCombat(enemy, refresh);
+    };
+
+    $("#aItem").onclick = () => {
+      openUseItemModal(() => refresh());
+    };
+
+    $("#aFlee").onclick = () => {
+      const chanceBase = clamp(0.25 + (p.sta / Math.max(1,p.staMax))*0.45, 0.20, 0.75);
+      if(chance(r.rng, chanceBase)){
+        logGood("Flucht gelungen. Manchmal ist Feigheit nur strategische Mobilität.");
+        closeModal();
+        takeTurn(); // fleeing uses turn
+      }else{
+        logBad("Flucht misslungen.");
+        enemyCounter(enemy, true);
+        refreshAfterCombat(enemy, refresh);
+      }
+    };
+  }
+
+  function rollPlayerDamage(isBurst){
+    const r=S.run;
+    const p=r.player;
+    const rng=r.rng;
+
+    const base = (p.weapon.atk ?? 3) + (isBurst ? 0 : 0);
+    const spread = 2 + (isBurst?1:0);
+    let dmg = base + Math.floor(rng()*spread);
+
+    // anomaly bonus if standing on hazard and using tesla etc.
+    if(p.weapon.anomalyBonus && r.map.t[p.y][p.x]===TILE.HAZARD){
+      dmg += p.weapon.anomalyBonus;
+      logMuted("Anomalie resoniert mit der Waffe.");
+    }
+
+    const critP = clamp((p.weapon.crit||0) + (p.critBonus||0), 0, 0.75);
+    if(chance(rng, critP)){
+      dmg = Math.floor(dmg * 1.75);
+      logGood("CRIT!");
+      playClick(860,0.05);
+    }
+    return dmg;
+  }
+
+  function applyDamageToEnemy(e, amount){
+    const r=S.run;
+    const p=r.player;
+
+    let dmg = amount;
+
+    // pierce
+    const pierce = p.weapon.pierce||0;
+    const armorBefore = e.armor;
+    if(e.armor>0){
+      const effectiveArmor = Math.max(0, e.armor - pierce);
+      const absorb = Math.min(effectiveArmor, dmg);
+      dmg -= absorb;
+    }
+
+    if(armorBefore>0 && pierce>0) logMuted(`Pierce: ${pierce} (Armor ignoriert).`);
+
+    e.hp = clamp(e.hp - Math.max(0,dmg), 0, e.hpMax);
+    logInfo(`Du triffst: ${Math.max(0,dmg)} Schaden.`);
+    playHit();
+
+    if(e.hp<=0){
+      killEnemy(e);
+    }
+  }
+
+  function enemyCounter(e, forced=false){
+    const r=S.run;
+    const p=r.player;
+    if(!r || !e || e.hp<=0) return;
+
+    // guard reduces incoming once
+    let dmg = Math.max(1, e.atk + (r.danger-1) - Math.floor(r.rng()*2));
+    if(r.runFlags.guardTurns>0){
+      dmg = Math.max(1, Math.floor(dmg*0.65));
+      r.runFlags.guardTurns = 0;
+      logMuted("Guard dämpft den Treffer.");
+    }
+
+    // enemy attacks
+    applyDamageToPlayer(dmg, e.name);
+
+    // death check handled by turn end
+  }
+
+  function refreshAfterCombat(e, refresh){
+    const r=S.run;
+    if(!r) return;
+
+    updateHUD();
+    renderAll();
+    renderRight();
+
+    if(r.player.hp<=0){
+      closeModal();
+      endRun(false, "Im Kampf gefallen. Das passiert den Besten. Und dir.");
+      return;
+    }
+
+    if(e.hp<=0){
+      closeModal();
+      takeTurn(); // combat consumed a turn
+      return;
+    }
+
+    // otherwise keep modal
+    refresh();
+  }
+
+  function killEnemy(e){
+    const r=S.run;
+    const p=r.player;
+
+    r.runFlags.kills = (r.runFlags.kills||0) + 1;
+
+    const xp = 6 + Math.floor(r.rng()*5) + (r.danger-1);
+    gainXP(xp);
+
+    const cash = 6 + Math.floor(r.rng()*10) + Math.floor((r.danger-1)*2);
+    p.credits += cash;
+    logGood(`Gegner neutralisiert. +${xp} XP, +${cash} Credits.`);
+
+    // rare drop
+    if(chance(r.rng, 0.18)){
+      const it = cloneItem(pick(r.rng, [ITEM_DB.find(x=>x.id==="medkit"), ITEM_DB.find(x=>x.id==="stim"), ITEM_DB.find(x=>x.id==="scrambler")]));
+      if(r.inv.length<10){
+        r.inv.push(it);
+        rememberCodexItem(it);
+        logInfo(`Drop: ${it.name}`);
+      }else{
+        logMuted("Drop liegt da. Inventar voll. Tja.");
+      }
+    }
+  }
+
+  function gainXP(amt){
+    const r=S.run;
+    if(!r) return;
+    const p=r.player;
+    p.xp += amt;
+    while(p.xp >= p.xpNext){
+      p.xp -= p.xpNext;
+      p.level++;
+      p.xpNext = Math.floor(p.xpNext * 1.35) + 6;
+      p.hpMax += 3; p.hp += 3;
+      p.staMax += 2; p.sta += 2;
+      logGood(`Level Up! Du bist jetzt Level ${p.level}.`);
+      offerPerk(false);
+    }
+  }
+
+  function offerPerk(fromStory){
+    const r=S.run;
+    if(!r) return;
+    const rng=r.rng;
+    const p=r.player;
+
+    // choose 3 perks not owned
+    const owned = new Set(p.perks.map(x=>x.id));
+    const pool = PERKS.filter(x=>!owned.has(x.id));
+    if(pool.length===0){
+      logMuted("Keine Perks mehr übrig. Du bist offiziell eine fertige Maschine.");
+      return;
+    }
+    const picks = [];
+    while(picks.length<Math.min(3,pool.length)){
+      const cand = pick(rng, pool);
+      if(!picks.includes(cand)) picks.push(cand);
+    }
+
+    showModal({
+      title: fromStory ? "Zufalls-Upgrade" : "Perk wählen",
+      body: `
+        <p class="small">${fromStory ? "Ein unerwarteter Vorteil. Nimm ihn, bevor er es sich anders überlegt." : "Wähle ein Perk. Dauerhaft für diesen Run."}</p>
+        <div class="grid3">
+          ${picks.map((pk,i)=>`
+            <div class="choice" data-p="${i}">
+              <div class="t">${escapeHtml(pk.name)}</div>
+              <div class="d">${escapeHtml(pk.desc)}</div>
+            </div>
+          `).join("")}
+        </div>
+        <div class="hr"></div>
+        <div class="tagrow" style="justify-content:flex-end">
+          <button class="tiny" id="pSkip">${fromStory ? "Schließen" : "Später (nicht empfehlenswert)"}</button>
+        </div>
+      `,
+      onMount: () => {
+        $("#pSkip").onclick = () => closeModal();
+        $$(".choice", modalContent).forEach(el=>{
+          el.onclick = () => {
+            const idx = parseInt(el.getAttribute("data-p"),10);
+            const pk = picks[idx];
+            if(!pk) return;
+            pk.apply(p);
+            p.perks.push({id:pk.id, name:pk.name});
+            rememberCodexPerk(pk);
+            logGood(`Perk aktiv: ${pk.name}`);
+            playClick(900,0.06);
+            closeModal();
+            updateHUD(); renderRight(); renderAll();
+          };
+        });
+      }
+    });
+  }
+
+  function openUseItemModal(onDone){
+    const r=S.run;
+    if(!r) return;
+    const consumables = r.inv.filter(it=>it.type==="consumable");
+    if(consumables.length===0){
+      logMuted("Keine Consumables. Du lebst gefährlich (oder schlecht vorbereitet).");
+      playClick(170,0.05);
+      return;
+    }
+
+    showModal({
+      title: "Item benutzen",
+      body: `
+        <p class="small">Wähle ein Consumable. (Ja, das ist der Teil wo Menschen immer zu spät heilen.)</p>
+        <div class="grid3">
+          ${consumables.map((it,idx)=>`
+            <div class="choice" data-u="${idx}">
+              <div class="t">${escapeHtml(it.name)}</div>
+              <div class="d">${escapeHtml(it.desc || "")}</div>
+            </div>
+          `).join("")}
+        </div>
+        <div class="hr"></div>
+        <div class="tagrow" style="justify-content:flex-end">
+          <button class="tiny" id="uClose">Schließen</button>
+        </div>
+      `,
+      onMount: () => {
+        $("#uClose").onclick = () => closeModal();
+        $$(".choice", modalContent).forEach(el=>{
+          el.onclick = () => {
+            const idx = parseInt(el.getAttribute("data-u"),10);
+            const it = consumables[idx];
+            if(!it) return;
+            // remove one instance
+            const invIdx = r.inv.indexOf(it);
+            if(invIdx>=0) r.inv.splice(invIdx,1);
+            it.use(r);
+            closeModal();
+            updateHUD(); renderRight(); renderAll();
+            if(onDone) onDone();
+          };
+        });
+      }
+    });
+  }
+
+  // ---------- FOV / LOS ----------
+  function updateFov(){
+    const r=S.run;
+    if(!r) return;
+    const p=r.player;
+    const radius = r.view.fov + (p.visionBonus|0);
+    const w=r.map.w, h=r.map.h;
+
+    for(let y=0;y<h;y++){
+      for(let x=0;x<w;x++){
+        // discovered stays
+      }
+    }
+    // mark discovered within radius with LOS
+    for(let yy=p.y-radius; yy<=p.y+radius; yy++){
+      for(let xx=p.x-radius; xx<=p.x+radius; xx++){
+        if(xx<0||yy<0||xx>=w||yy>=h) continue;
+        const d = Math.hypot(xx-p.x, yy-p.y);
+        if(d>radius+0.15) continue;
+        if(lineOfSight(r.map, p.x,p.y, xx,yy)){
+          r.discovered[yy][xx]=1;
+        }
+      }
+    }
+  }
+
+  function lineOfSight(map, x0,y0,x1,y1){
+    // Bresenham
+    let dx = Math.abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+    let dy = -Math.abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+    let err = dx + dy;
+    let x=x0, y=y0;
+    while(true){
+      if(x===x1 && y===y1) return true;
+      if(!(x===x0 && y===y0)){
+        if(TILE_INFO[map.t[y][x]]?.blocks) return false;
+      }
+      const e2 = 2*err;
+      if(e2 >= dy){ err += dy; x += sx; }
+      if(e2 <= dx){ err += dx; y += sy; }
+      // safety
+      if(x<0||y<0||x>=map.w||y>=map.h) return false;
+    }
+  }
+
+  // ---------- Rendering ----------
+  const gctx = game.getContext("2d");
+  const mmctx = minimap.getContext("2d");
+
+  function resize(){
+    const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    // bg
+    bg.width = Math.floor(innerWidth*dpr);
+    bg.height = Math.floor(innerHeight*dpr);
+    bg.style.width = "100%";
+    bg.style.height = "100%";
+    fx.width = bg.width;
+    fx.height = bg.height;
+    fx.style.width="100%";
+    fx.style.height="100%";
+
+    // game canvas fits container
+    const rect = game.getBoundingClientRect();
+    game.width = Math.floor(rect.width*dpr);
+    game.height = Math.floor(rect.height*dpr);
+
+    // minimap
+    const mmRect = minimap.getBoundingClientRect();
+    minimap.width = Math.floor(mmRect.width*dpr);
+    minimap.height = Math.floor(mmRect.height*dpr);
+
+    renderAll();
+  }
+  window.addEventListener("resize", resize, {passive:true});
+
+  function renderAll(){
+    renderBG();
+    renderGame();
+    renderMinimap();
+    renderRight();
+  }
+
+  function renderBG(){
+    const ctx = bg.getContext("2d");
+    const w=bg.width, h=bg.height;
+    ctx.clearRect(0,0,w,h);
+
+    // soft gradient blobs
+    const grd = ctx.createLinearGradient(0,0,0,h);
+    grd.addColorStop(0, "rgba(0,0,0,0)");
+    grd.addColorStop(1, "rgba(0,0,0,0.25)");
+    ctx.fillStyle = grd;
+    ctx.fillRect(0,0,w,h);
+
+    // subtle stars/noise
+    ctx.globalAlpha = 0.10;
+    for(let i=0;i<220;i++){
+      const x = (i*97 % w) + (Math.sin((t0/5000)+i)*28);
+      const y = (i*53 % h) + (Math.cos((t0/6000)+i)*28);
+      const r = (i%7===0)?2:1;
+      ctx.fillStyle = "rgba(245,250,255,0.7)";
+      ctx.fillRect(x,y,r,r);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function renderGame(){
+    const r=S.run;
+    const ctx=gctx;
+    const w=game.width, h=game.height;
+    ctx.clearRect(0,0,w,h);
+
+    // when no run: show title
+    if(!r){
+      ctx.save();
+      ctx.fillStyle = "rgba(245,250,255,.80)";
+      ctx.font = `${Math.floor(w*0.04)}px ${getComputedStyle(document.body).fontFamily}`;
+      ctx.textAlign="center";
+      ctx.fillText("IR9: Rogue Recon", w/2, h*0.46);
+      ctx.font = `${Math.floor(w*0.018)}px ${getComputedStyle(document.body).fontFamily}`;
+      ctx.fillStyle = "rgba(245,250,255,.62)";
+      ctx.fillText("Klicke „Run starten“. Dann versuch, nicht zu sterben.", w/2, h*0.54);
+      ctx.restore();
+      return;
+    }
+
+    const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    const map=r.map;
+    const p=r.player;
+
+    const baseTilePx = 18 * S.zoom;
+    const tilePx = clamp(baseTilePx, 10, 32) * dpr;
+
+    // center cam on player (soft)
+    const viewW = w / tilePx;
+    const viewH = h / tilePx;
+    const targetX = p.x - viewW/2;
+    const targetY = p.y - viewH/2;
+    S.cam.x = lerp(S.cam.x, targetX, 0.20);
+    S.cam.y = lerp(S.cam.y, targetY, 0.20);
+
+    const ox = -S.cam.x * tilePx;
+    const oy = -S.cam.y * tilePx;
+
+    // visible radius
+    const visRad = r.view.fov + (p.visionBonus|0);
+
+    // draw tiles
+    for(let y=0;y<map.h;y++){
+      for(let x=0;x<map.w;x++){
+        const sx = Math.floor(ox + x*tilePx);
+        const sy = Math.floor(oy + y*tilePx);
+        if(sx+tilePx<0||sy+tilePx<0||sx>w||sy>h) continue;
+
+        const discovered = r.discovered[y][x]===1;
+        if(!discovered){
+          // fog
+          ctx.fillStyle = "rgba(0,0,0,0.50)";
+          ctx.fillRect(sx,sy,tilePx,tilePx);
+          continue;
+        }
+
+        const tile = map.t[y][x];
+        const isVis = (Math.hypot(x-p.x,y-p.y)<=visRad+0.15) && lineOfSight(map, p.x,p.y, x,y);
+
+        // base colors
+        let fill = "rgba(255,255,255,0.04)";
+        if(tile===TILE.WALL) fill = "rgba(255,255,255,0.06)";
+        if(tile===TILE.FLOOR) fill = "rgba(255,255,255,0.03)";
+        if(tile===TILE.HAZARD) fill = "rgba(170,120,255,0.10)";
+        if(tile===TILE.CACHE) fill = "rgba(80,255,190,0.08)";
+        if(tile===TILE.TRADER) fill = "rgba(255,190,80,0.08)";
+        if(tile===TILE.OBJECTIVE) fill = "rgba(120,230,255,0.10)";
+        if(tile===TILE.EXIT) fill = "rgba(120,230,255,0.08)";
+
+        if(!isVis){
+          // dim if discovered but not currently visible
+          fill = fill.replace(/0\.(\d+)/, (m,n)=>`0.${Math.max(2, Math.floor(parseInt(n,10)*0.55))}`);
+          ctx.fillStyle = fill;
+          ctx.fillRect(sx,sy,tilePx,tilePx);
+          ctx.fillStyle = "rgba(0,0,0,0.18)";
+          ctx.fillRect(sx,sy,tilePx,tilePx);
+        } else {
+          ctx.fillStyle = fill;
+          ctx.fillRect(sx,sy,tilePx,tilePx);
+
+          // subtle grid line
+          ctx.strokeStyle = "rgba(255,255,255,0.05)";
+          ctx.strokeRect(sx+0.5, sy+0.5, tilePx-1, tilePx-1);
+
+          // tile glyph for specials
+          if(tile!==TILE.FLOOR && tile!==TILE.WALL){
+            ctx.fillStyle = "rgba(245,250,255,0.75)";
+            ctx.font = `${Math.floor(tilePx*0.62)}px ${S.reduceMotion ? "sans-serif" : "sans-serif"}`;
+            ctx.textAlign="center";
+            ctx.textBaseline="middle";
+            ctx.fillText(TILE_INFO[tile].ch, sx+tilePx/2, sy+tilePx/2+1);
+          }
+        }
+      }
+    }
+
+    // draw enemies (only if visible)
+    for(const e of r.enemies){
+      if(e.hp<=0) continue;
+      const d = Math.hypot(e.x-p.x,e.y-p.y);
+      const vis = d<=visRad+0.15 && lineOfSight(map, p.x,p.y, e.x,e.y);
+      if(!vis) continue;
+      const sx = Math.floor(ox + e.x*tilePx);
+      const sy = Math.floor(oy + e.y*tilePx);
+      ctx.fillStyle = "rgba(255,90,120,0.80)";
+      ctx.beginPath();
+      ctx.roundRect(sx+tilePx*0.18, sy+tilePx*0.18, tilePx*0.64, tilePx*0.64, tilePx*0.16);
+      ctx.fill();
+
+      // hp tiny
+      ctx.fillStyle = "rgba(0,0,0,0.35)";
+      ctx.fillRect(sx+tilePx*0.18, sy+tilePx*0.12, tilePx*0.64, tilePx*0.08);
+      ctx.fillStyle = "rgba(245,250,255,0.70)";
+      const pr = e.hp / e.hpMax;
+      ctx.fillRect(sx+tilePx*0.18, sy+tilePx*0.12, tilePx*0.64*pr, tilePx*0.08);
+    }
+
+    // draw player
+    const psx = Math.floor(ox + p.x*tilePx);
+    const psy = Math.floor(oy + p.y*tilePx);
+
+    // glow
+    ctx.save();
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = "rgba(120,230,255,0.9)";
+    ctx.beginPath();
+    ctx.arc(psx+tilePx/2, psy+tilePx/2, tilePx*0.62, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.fillStyle = "rgba(120,230,255,0.88)";
+    ctx.beginPath();
+    ctx.roundRect(psx+tilePx*0.16, psy+tilePx*0.16, tilePx*0.68, tilePx*0.68, tilePx*0.18);
+    ctx.fill();
+
+    // direction notch
+    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    ctx.fillRect(psx+tilePx*0.44, psy+tilePx*0.18, tilePx*0.12, tilePx*0.18);
+
+    // objective ping dots (if discovered)
+    drawPings(ctx, r, ox, oy, tilePx);
+  }
+
+  function drawPings(ctx, r, ox, oy, tilePx){
+    const p=r.player;
+    const f=r.runFlags;
+    // show objective + exit if discovered
+    const pts = [];
+    pts.push({x:f.objectivePos.x,y:f.objectivePos.y, col:"rgba(120,230,255,0.90)", show: r.discovered[f.objectivePos.y][f.objectivePos.x]===1 && !f.didObjective});
+    pts.push({x:f.exitPos.x,y:f.exitPos.y, col:"rgba(80,255,190,0.85)", show: r.discovered[f.exitPos.y][f.exitPos.x]===1 && f.didObjective});
+
+    const t = now()/1000;
+    for(const pt of pts){
+      if(!pt.show) continue;
+      const sx = ox + pt.x*tilePx + tilePx/2;
+      const sy = oy + pt.y*tilePx + tilePx/2;
+      const pulse = 0.5 + 0.5*Math.sin(t*2.2);
+      ctx.save();
+      ctx.globalAlpha = 0.45 + 0.35*pulse;
+      ctx.strokeStyle = pt.col;
+      ctx.lineWidth = Math.max(1, tilePx*0.06);
+      ctx.beginPath();
+      ctx.arc(sx,sy, tilePx*(0.40 + 0.12*pulse), 0, Math.PI*2);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  function renderMinimap(){
+    const r=S.run;
+    const ctx=mmctx;
+    const w=minimap.width, h=minimap.height;
+    ctx.clearRect(0,0,w,h);
+
+    if(!r){
+      ctx.fillStyle="rgba(245,250,255,.50)";
+      ctx.font = `${Math.floor(h*0.10)}px ${getComputedStyle(document.body).fontFamily}`;
+      ctx.textAlign="center";
+      ctx.fillText("—", w/2, h/2);
+      return;
+    }
+
+    const map=r.map;
+    const p=r.player;
+    const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+
+    // tile size based on map
+    const meta = computeMetaProfile();
+    const pad = 10*dpr;
+    const tw = (w - pad*2) / map.w;
+    const th = (h - pad*2) / map.h;
+    const ts = Math.max(2*dpr, Math.min(tw, th));
+    const ox = pad + (w - pad*2 - ts*map.w)/2;
+    const oy = pad + (h - pad*2 - ts*map.h)/2;
+
+    const visRad = r.view.fov + (p.visionBonus|0);
+
+    for(let y=0;y<map.h;y++){
+      for(let x=0;x<map.w;x++){
+        const disc = r.discovered[y][x]===1;
+        if(!disc){
+          ctx.fillStyle="rgba(0,0,0,0.30)";
+          ctx.fillRect(ox+x*ts, oy+y*ts, ts, ts);
+          continue;
+        }
+        const tile = map.t[y][x];
+        let c = "rgba(255,255,255,0.10)";
+        if(tile===TILE.WALL) c="rgba(255,255,255,0.16)";
+        if(tile===TILE.FLOOR) c="rgba(255,255,255,0.08)";
+        if(tile===TILE.HAZARD) c="rgba(170,120,255,0.18)";
+        if(tile===TILE.CACHE) c="rgba(80,255,190,0.16)";
+        if(tile===TILE.TRADER) c="rgba(255,190,80,0.16)";
+        if(tile===TILE.OBJECTIVE) c="rgba(120,230,255,0.20)";
+        if(tile===TILE.EXIT) c="rgba(80,255,190,0.18)";
+
+        // visible highlight
+        const isVis = (Math.hypot(x-p.x,y-p.y)<=visRad+0.15) && lineOfSight(map,p.x,p.y,x,y);
+        if(isVis) c = c.replace(/0\.(\d+)/, (m,n)=>`0.${Math.min(90, parseInt(n,10)+12)}`);
+
+        ctx.fillStyle=c;
+        ctx.fillRect(ox+x*ts, oy+y*ts, ts, ts);
+      }
+    }
+
+    // player
+    ctx.fillStyle="rgba(120,230,255,0.95)";
+    ctx.fillRect(ox+p.x*ts, oy+p.y*ts, ts, ts);
+
+    // enemies (if visible)
+    for(const e of r.enemies){
+      if(e.hp<=0) continue;
+      const vis = (Math.hypot(e.x-p.x,e.y-p.y)<=visRad+0.15) && lineOfSight(map,p.x,p.y,e.x,e.y);
+      if(!vis) continue;
+      ctx.fillStyle="rgba(255,90,120,0.85)";
+      ctx.fillRect(ox+e.x*ts, oy+e.y*ts, ts, ts);
+    }
+  }
+
+  function renderRight(){
+    // tabs content
+    renderInventoryTab();
+    renderCodexTab();
+    renderRunTab();
+  }
+
+  function renderInventoryTab(){
+    const r=S.run;
+    if(!r){
+      tabInv.innerHTML = `
+        <div class="card">
+          <div class="h"><span>Inventar</span><span class="tag">—</span></div>
+          <div class="p">Starte einen Run, dann kannst du Loot horten wie ein Profi.</div>
+        </div>`;
+      return;
+    }
+    const p=r.player;
+    const inv=r.inv;
+    const invCap=10;
+
+    const weapon = p.weapon;
+    const armor = p.armorItem;
+
+    const weaponCard = `
+      <div class="card">
+        <div class="h"><span>Waffe</span><span class="tag">${escapeHtml(weapon.name)}</span></div>
+        <div class="p">${escapeHtml(describeGear(weapon))}<br/>Ammo: <b>${weapon.ammo? p.ammo : "—"}</b></div>
+        <div class="tagrow">
+          <button class="tiny" id="wSwap">Wechseln</button>
+          ${weapon.ammo ? `<button class="tiny" id="wReload">+Ammo (klein)</button>` : ``}
+        </div>
+      </div>
+    `;
+
+    const armorCard = `
+      <div class="card">
+        <div class="h"><span>Rüstung</span><span class="tag">${escapeHtml(armor.name)}</span></div>
+        <div class="p">${escapeHtml(describeGear(armor))}</div>
+        <div class="tagrow">
+          <button class="tiny" id="aSwap">Wechseln</button>
+          <button class="tiny" id="aRepair">Reparieren</button>
+        </div>
+      </div>
+    `;
+
+    const items = inv.map((it,idx)=>`
+      <div class="card">
+        <div class="h">
+          <span>${escapeHtml(it.name)}</span>
+          <span class="tag">${escapeHtml(it.type)} • ${escapeHtml(rarityName(it.rarity||0))}</span>
+        </div>
+        <div class="p">${escapeHtml(it.desc || describeGear(it))}</div>
+        <div class="tagrow">
+          ${it.type==="consumable" ? `<button class="tiny good" data-use="${idx}">Benutzen</button>` : ``}
+          ${it.type==="weapon" ? `<button class="tiny" data-eqW="${idx}">Ausrüsten</button>` : ``}
+          ${it.type==="armor" ? `<button class="tiny" data-eqA="${idx}">Anziehen</button>` : ``}
+          <button class="tiny danger" data-drop="${idx}">Wegwerfen</button>
+        </div>
+      </div>
+    `).join("");
+
+    const perks = p.perks.length
+      ? `<div class="card">
+          <div class="h"><span>Perks</span><span class="tag">${p.perks.length}</span></div>
+          <div class="p">${p.perks.map(pk=>`<span class="tag">${escapeHtml(pk.name)}</span>`).join(" ")}</div>
+        </div>`
+      : `<div class="card">
+          <div class="h"><span>Perks</span><span class="tag">0</span></div>
+          <div class="p">Noch keine. Entweder du bist Level 1 oder du weigerst dich zu wachsen.</div>
+        </div>`;
+
+    tabInv.innerHTML = `
+      ${weaponCard}
+      ${armorCard}
+      ${perks}
+      <div class="card">
+        <div class="h"><span>Inventar</span><span class="tag">${inv.length}/${invCap}</span></div>
+        <div class="p">Consumables helfen. Oft. Manchmal. Wenn du sie benutzt.</div>
+      </div>
+      ${items || `<div class="card"><div class="h"><span>Leer</span><span class="tag">—</span></div><div class="p">Noch ist es ruhig. Das hält nie.</div></div>`}
+    `;
+
+    // wire buttons
+    $("#wSwap")?.addEventListener("click", () => openEquipModal("weapon"));
+    $("#wReload")?.addEventListener("click", () => {
+      if(p.weapon.ammo){
+        const cost=12;
+        if(p.credits<cost){ logWarn("Zu wenig Credits für Ammo."); return; }
+        p.credits-=cost;
+        p.ammo+=6;
+        logGood("+6 Ammo.");
+        playClick(680,0.05);
+        updateHUD(); renderRight();
+      }
+    });
+
+    $("#aSwap")?.addEventListener("click", () => openEquipModal("armor"));
+    $("#aRepair")?.addEventListener("click", () => {
+      const cost=10;
+      if(p.credits<cost){ logWarn("Zu wenig Credits."); return; }
+      p.credits-=cost;
+      p.armor = clamp(p.armor + 2, 0, p.armorMax);
+      logGood("Armor repariert (+2).");
+      playClick(640,0.05);
+      updateHUD(); renderRight();
+    });
+
+    $$("[data-use]", tabInv).forEach(btn=>{
+      btn.addEventListener("click", () => {
+        const idx = parseInt(btn.getAttribute("data-use"),10);
+        const it = r.inv[idx];
+        if(!it) return;
+        r.inv.splice(idx,1);
+        it.use(r);
+        updateHUD(); renderRight(); renderAll();
+      });
+    });
+    $$("[data-eqW]", tabInv).forEach(btn=>{
+      btn.addEventListener("click", () => {
+        const idx = parseInt(btn.getAttribute("data-eqW"),10);
+        const it = r.inv[idx];
+        if(!it || it.type!=="weapon") return;
+        equipWeapon(it, idx);
+      });
+    });
+    $$("[data-eqA]", tabInv).forEach(btn=>{
+      btn.addEventListener("click", () => {
+        const idx = parseInt(btn.getAttribute("data-eqA"),10);
+        const it = r.inv[idx];
+        if(!it || it.type!=="armor") return;
+        equipArmor(it, idx);
+      });
+    });
+    $$("[data-drop]", tabInv).forEach(btn=>{
+      btn.addEventListener("click", () => {
+        const idx = parseInt(btn.getAttribute("data-drop"),10);
+        const it = r.inv[idx];
+        if(!it) return;
+        r.inv.splice(idx,1);
+        logMuted(`Weggeworfen: ${it.name}`);
+        playClick(200,0.05);
+        renderRight();
+      });
+    });
+  }
+
+  function equipWeapon(it, idx){
+    const r=S.run;
+    const p=r.player;
+
+    // move current weapon into inventory if not null
+    if(p.weapon){
+      r.inv.push(p.weapon);
+    }
+    // equip new
+    p.weapon = it;
+    rememberCodexItem(it);
+    // remove from inventory by idx (but inventory changed due to push)
+    // safer: remove first matching by id & name reference
+    const pos = r.inv.indexOf(it);
+    if(pos>=0) r.inv.splice(pos,1);
+
+    // ammo setup
+    if(p.weapon.ammo){
+      if(p.ammo<=0) p.ammo = p.weapon.ammo;
+    }
+
+    logGood(`Ausgerüstet: ${it.name}`);
+    playClick(740,0.05);
+    updateHUD(); renderRight(); renderAll();
+  }
+
+  function equipArmor(it, idx){
+    const r=S.run;
+    const p=r.player;
+
+    if(p.armorItem){
+      r.inv.push(p.armorItem);
+    }
+    p.armorItem = it;
+    rememberCodexItem(it);
+
+    const pos = r.inv.indexOf(it);
+    if(pos>=0) r.inv.splice(pos,1);
+
+    // apply armor stats (simple: set armorMax based on base + item arm)
+    const baseMax = 2 + computeMetaProfile().startArmor + 2; // baseline buffer
+    // We'll treat armor item as bonus to max for simplicity:
+    p.armorMax = Math.max(1, 2 + computeMetaProfile().startArmor + (it.arm||0));
+    p.armor = clamp(p.armor, 0, p.armorMax);
+
+    p.visionBonus = it.vision||0;
+
+    logGood(`Angezogen: ${it.name}`);
+    playClick(700,0.05);
+    updateHUD(); renderRight(); renderAll();
+  }
+
+  function openEquipModal(kind){
+    const r=S.run;
+    if(!r) return;
+    const list = r.inv.filter(it => it.type===kind);
+    if(list.length===0){
+      logMuted(`Keine ${kind==="weapon"?"Waffen":"Rüstungen"} im Inventar.`);
+      playClick(180,0.05);
+      return;
+    }
+    showModal({
+      title: kind==="weapon" ? "Waffe auswählen" : "Rüstung auswählen",
+      body: `
+        <p class="small">Wähle ein Item zum Ausrüsten.</p>
+        <div class="grid3">
+          ${list.map((it,idx)=>`
+            <div class="choice" data-eq="${idx}">
+              <div class="t">${escapeHtml(it.name)} <span class="tag" style="margin-left:8px">${escapeHtml(rarityName(it.rarity||0))}</span></div>
+              <div class="d">${escapeHtml(it.desc || describeGear(it))}</div>
+            </div>
+          `).join("")}
+        </div>
+        <div class="hr"></div>
+        <div class="tagrow" style="justify-content:flex-end">
+          <button class="tiny" id="eqClose">Schließen</button>
+        </div>
+      `,
+      onMount: ()=>{
+        $("#eqClose").onclick = () => closeModal();
+        $$(".choice", modalContent).forEach(el=>{
+          el.onclick = () => {
+            const idx = parseInt(el.getAttribute("data-eq"),10);
+            const it = list[idx];
+            if(!it) return;
+            closeModal();
+            if(kind==="weapon") equipWeapon(it);
+            else equipArmor(it);
+          };
+        });
+      }
+    });
+  }
+
+  function renderCodexTab(){
+    const items = Object.values(S.codex.items||{});
+    const perks = Object.values(S.codex.perks||{});
+    const enemies = Object.values(S.codex.enemies||{});
+
+    tabCodex.innerHTML = `
+      <div class="card">
+        <div class="h"><span>Codex</span><span class="tag">${items.length+perks.length+enemies.length} Einträge</span></div>
+        <div class="p">Alles, was du schon gesehen hast. Wissen ist Macht. (Und trotzdem stirbst du.)</div>
+      </div>
+
+      <div class="card">
+        <div class="h"><span>Items</span><span class="tag">${items.length}</span></div>
+        <div class="p">${items.length ? items.map(i=>`<span class="tag">${escapeHtml(i.name)}</span>`).join(" ") : "Noch nichts entdeckt."}</div>
+      </div>
+
+      <div class="card">
+        <div class="h"><span>Perks</span><span class="tag">${perks.length}</span></div>
+        <div class="p">${perks.length ? perks.map(i=>`<span class="tag">${escapeHtml(i.name)}</span>`).join(" ") : "Noch keine Perks."}</div>
+      </div>
+
+      <div class="card">
+        <div class="h"><span>Gegner</span><span class="tag">${enemies.length}</span></div>
+        <div class="p">${enemies.length ? enemies.map(i=>`<span class="tag">${escapeHtml(i.name)}</span>`).join(" ") : "Noch keine Gegner... was verdächtig ist."}</div>
+      </div>
+    `;
+  }
+
+  function renderRunTab(){
+    const r=S.run;
+    const meta=computeMetaProfile();
+    tabRun.innerHTML = `
+      <div class="card">
+        <div class="h"><span>Meta-Progress</span><span class="tag">Intel: ${meta.intel}</span></div>
+        <div class="p">Intel ist die einzige Währung, die wirklich zählt. Leider.</div>
+        <div class="tagrow">
+          <button class="tiny" id="openMeta2">Meta öffnen</button>
+          <button class="tiny danger" id="wipeCodex">Codex reset</button>
+        </div>
+      </div>
+
+      ${r ? `
+        <div class="card">
+          <div class="h"><span>Run</span><span class="tag">${r.runFlags.runOver ? (r.runFlags.win?"Win":"Loss") : "Live"}</span></div>
+          <div class="p">
+            Turns: <b>${r.runFlags.turns}</b><br/>
+            Gefahr: <b>${roman(r.danger)}</b><br/>
+            Kills: <b>${r.runFlags.kills||0}</b><br/>
+            Ziel: <b>${escapeHtml(r.runFlags.objective.title)}</b> (${r.runFlags.didObjective ? "erledigt" : "offen"})<br/>
+            Seed: <b>${escapeHtml(r.runFlags.seedStr)}</b>
+          </div>
+          <div class="tagrow">
+            <button class="tiny danger" id="giveUp">Aufgeben</button>
+          </div>
+        </div>
+      ` : `
+        <div class="card">
+          <div class="h"><span>Run</span><span class="tag">—</span></div>
+          <div class="p">Kein Run aktiv.</div>
+        </div>
+      `}
+    `;
+
+    $("#openMeta2")?.addEventListener("click", () => showMetaModal());
+    $("#wipeCodex")?.addEventListener("click", () => {
+      S.codex = {items:{}, perks:{}, enemies:{}};
+      safeLocalSet("ir9_codex_v1", S.codex);
+      logWarn("Codex zurückgesetzt.");
+      renderRight();
+    });
+    $("#giveUp")?.addEventListener("click", () => {
+      if(!S.run) return;
+      endRun(false, "Du gibst auf. Die Stadt gewinnt. Wieder.");
+    });
+  }
+
+  // ---------- HUD ----------
+  function updateHUD(){
+    const r=S.run;
+    if(!r){
+      hpText.textContent="—";
+      staText.textContent="—";
+      armText.textContent="—";
+      ecoText.textContent="—";
+      hpBar.style.width="0%";
+      staBar.style.width="0%";
+      armBar.style.width="0%";
+      ecoBar.style.width="0%";
+      return;
+    }
+    const p=r.player;
+
+    hpText.textContent = `${p.hp}/${p.hpMax}`;
+    staText.textContent = `${p.sta}/${p.staMax}`;
+    armText.textContent = `${p.armor}/${p.armorMax}`;
+    ecoText.textContent = `${p.credits} / Intel ${computeMetaProfile().intel}`;
+
+    hpBar.style.width = `${clamp((p.hp/p.hpMax)*100,0,100)}%`;
+    staBar.style.width = `${clamp((p.sta/p.staMax)*100,0,100)}%`;
+    armBar.style.width = `${clamp((p.armor/Math.max(1,p.armorMax))*100,0,100)}%`;
+    ecoBar.style.width = `${clamp(Math.min(100, (p.credits/120)*100),0,100)}%`;
+
+    // objective dots
+    $("#dotObjective").className = "dot" + (r.runFlags.didObjective ? " good" : "");
+    $("#dotDanger").className = "dot warn";
+    $("#dotLoot").className = "dot good";
+  }
+
+  // ---------- UI: Tabs ----------
+  $$(".tab").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      playClick(420,0.04);
+      $$(".tab").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      const tab = btn.getAttribute("data-tab");
+      tabInv.style.display = tab==="inv" ? "" : "none";
+      tabMap.style.display = tab==="map" ? "" : "none";
+      tabCodex.style.display = tab==="codex" ? "" : "none";
+      tabRun.style.display = tab==="run" ? "" : "none";
+      renderAll();
+    });
+  });
+
+  // ---------- Modal helpers ----------
+  function showModal({title, body, onMount}){
+    modalContent.innerHTML = `
+      <h2 id="modalTitle">${escapeHtml(title)}</h2>
+      ${body}
+    `;
+    modal.classList.add("show");
+    playClick(520,0.04);
+
+    // focus trap-ish
+    setTimeout(() => {
+      const firstBtn = modalContent.querySelector("button, .choice");
+      firstBtn?.focus?.();
+      onMount?.();
+    }, 0);
+  }
+  function closeModal(){
+    modal.classList.remove("show");
+    playClick(360,0.03);
+  }
+  modal.addEventListener("click", (e)=>{
+    if(e.target===modal) closeModal();
+  });
+
+  // ---------- Meta modal ----------
+  function showMetaModal(){
+    const meta = computeMetaProfile();
+    const owned = new Set(meta.purchased);
+
+    const list = META_UPGRADES.map(up=>{
+      const isOwned = owned.has(up.id);
+      return `
+        <div class="choice" data-up="${escapeHtml(up.id)}" style="${isOwned ? "opacity:.55" : ""}">
+          <div class="t">${escapeHtml(up.name)} <span class="tag" style="margin-left:8px">${isOwned ? "owned" : ("cost " + up.cost)}</span></div>
+          <div class="d">${escapeHtml(up.desc)}</div>
+        </div>
+      `;
+    }).join("");
+
+    showModal({
+      title: "Meta: IR9 Intel",
+      body: `
+        <p class="small">Intel: <b>${meta.intel}</b> • Diese Upgrades gelten für zukünftige Runs.</p>
+        <div class="card">
+          <div class="h"><span>Start-Loadout</span><span class="tag">computed</span></div>
+          <div class="p">
+            StartHP: <b>+${meta.startHp}</b><br/>
+            StartArmor: <b>+${meta.startArmor}</b><br/>
+            StartWeapon: <b>${escapeHtml(meta.startWeapon)}</b><br/>
+            StartItems: <b>${(meta.startItems||[]).length ? meta.startItems.join(", ") : "—"}</b><br/>
+            MapSense: <b>${meta.mapSense ? "an" : "aus"}</b>
+          </div>
+        </div>
+        <div class="grid3" style="margin-top:10px">${list}</div>
+        <div class="hr"></div>
+        <div class="tagrow" style="justify-content:space-between">
+          <button class="tiny danger" id="metaReset">Meta reset</button>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end">
+            <button class="tiny" id="metaClose">Schließen</button>
+          </div>
+        </div>
+      `,
+      onMount: () => {
+        $("#metaClose").onclick = () => closeModal();
+        $("#metaReset").onclick = () => {
+          S.meta = { intel: 0, purchased: [], startHp:0, startArmor:0, startWeapon:"knife", startItems:[], mapSense:false };
+          safeLocalSet("ir9_meta_v1", S.meta);
+          logWarn("Meta zurückgesetzt.");
+          closeModal();
+          updateHUD(); renderRight();
+        };
+
+        $$(".choice", modalContent).forEach(el=>{
+          const id = el.getAttribute("data-up");
+          if(!id) return;
+          el.onclick = () => {
+            const metaNow = computeMetaProfile();
+            const ownedNow = new Set(metaNow.purchased);
+            const up = META_UPGRADES.find(x=>x.id===id);
+            if(!up) return;
+            if(ownedNow.has(id)){
+              logMuted("Schon gekauft.");
+              playClick(200,0.05);
+              return;
+            }
+            if((S.meta.intel|0) < up.cost){
+              logWarn("Zu wenig Intel.");
+              playClick(160,0.06);
+              return;
+            }
+            S.meta.intel = (S.meta.intel|0) - up.cost;
+            S.meta.purchased = [...(S.meta.purchased||[]), id];
+            safeLocalSet("ir9_meta_v1", S.meta);
+
+            logGood(`Meta gekauft: ${up.name}`);
+            playClick(780,0.05);
+
+            // refresh modal
+            showMetaModal();
+            updateHUD();
+            renderRight();
+          };
+        });
+      }
+    });
+  }
+
+  // ---------- Help modal ----------
+  function showHelpModal(){
+    showModal({
+      title: "Hilfe",
+      body: `
+        <p class="small">
+          <b>Ziel:</b> ★ erledigen, dann zum Exit ⟡.<br/>
+          <b>Roguelike-Regel:</b> Wenn HP=0, ist Schluss. Meta-Intel bleibt.<br/><br/>
+          <b>Tipps:</b><br/>
+          • Interagiere mit <b>E</b> (Cache/Händler/Ziel/Exit).<br/>
+          • In Anomalien ✶ tickt Schaden. Kurz rein ist ok. Camping nicht.<br/>
+          • Stamina ist dein Tempo. Ohne Stamina bist du nur ein Ziel mit Meinung.<br/>
+          • Perks sind Run-gebunden. Meta-Upgrades sind dauerhaft.<br/><br/>
+          <span class="tag">WASD/Pfeile</span> bewegen • <span class="tag">Space</span> warten • <span class="tag">I</span> Item
+        </p>
+        <div class="hr"></div>
+        <div class="tagrow" style="justify-content:flex-end">
+          <button class="primary" id="hOk">Alles klar</button>
+        </div>
+      `,
+      onMount: () => { $("#hOk").onclick = () => closeModal(); }
+    });
+  }
+
+  // ---------- Controls ----------
+  window.addEventListener("keydown", (e)=>{
+    if(e.repeat) return;
+
+    // allow Esc to close modal
+    if(e.key==="Escape"){
+      if(modal.classList.contains("show")) closeModal();
+      else if(S.run && !S.run.runFlags.runOver){
+        showModal({
+          title:"Menü",
+          body: `
+            <p class="small">Kurzpause. Du kannst nicht ewig vor Entscheidungen fliehen. Also schon, aber...</p>
+            <div class="grid3">
+              <div class="choice" id="mHelp"><div class="t">Hilfe</div><div class="d">Steuerung, Regeln, Tipps.</div></div>
+              <div class="choice" id="mMeta2"><div class="t">Meta</div><div class="d">Intel ausgeben.</div></div>
+              <div class="choice" id="mQuit"><div class="t">Aufgeben</div><div class="d">Run beenden (Loss).</div></div>
+            </div>
+            <div class="hr"></div>
+            <div class="tagrow" style="justify-content:flex-end">
+              <button class="tiny" id="mClose2">Schließen</button>
+            </div>
+          `,
+          onMount: ()=>{
+            $("#mClose2").onclick=()=>closeModal();
+            $("#mHelp").onclick=()=>{ closeModal(); showHelpModal(); };
+            $("#mMeta2").onclick=()=>{ closeModal(); showMetaModal(); };
+            $("#mQuit").onclick=()=>{ closeModal(); endRun(false, "Du gibst auf. Wenigstens ehrlich."); };
+          }
+        });
+      }
+      return;
+    }
+
+    if(modal.classList.contains("show")) return; // freeze controls
+
+    if(e.key==="w"||e.key==="ArrowUp") movePlayer(0,-1);
+    else if(e.key==="s"||e.key==="ArrowDown") movePlayer(0,1);
+    else if(e.key==="a"||e.key==="ArrowLeft") movePlayer(-1,0);
+    else if(e.key==="d"||e.key==="ArrowRight") movePlayer(1,0);
+    else if(e.key===" "){ e.preventDefault(); waitTurn(); }
+    else if(e.key==="e"||e.key==="Enter") interact();
+    else if(e.key.toLowerCase()==="i") openUseItemModal();
+  }, {passive:false});
+
+  // mobile wiring
+  mvU?.addEventListener("click", ()=>movePlayer(0,-1));
+  mvD?.addEventListener("click", ()=>movePlayer(0,1));
+  mvL?.addEventListener("click", ()=>movePlayer(-1,0));
+  mvR?.addEventListener("click", ()=>movePlayer(1,0));
+  mvW?.addEventListener("click", ()=>waitTurn());
+  btnInteract?.addEventListener("click", ()=>interact());
+  btnUse?.addEventListener("click", ()=>openUseItemModal());
+  btnPanic?.addEventListener("click", ()=>{ if(modal.classList.contains("show")) closeModal(); else playClick(180,0.04); });
+
+  // buttons
+  btnStart.addEventListener("click", ()=>{
+    playClick(520,0.05);
+    startRun(newSeed());
+  });
+  btnMeta.addEventListener("click", ()=>{ playClick(420,0.05); showMetaModal(); });
+  btnHelp.addEventListener("click", ()=>{ playClick(420,0.05); showHelpModal(); });
+
+  btnNewSeed.addEventListener("click", ()=>{
+    playClick(420,0.04);
+    const s=newSeed();
+    seedLabel.textContent=s;
+    logMuted(`Seed vorbereitet: ${s}`);
+  });
+  btnCopySeed.addEventListener("click", async ()=>{
+    const s = seedLabel.textContent;
+    try{ await navigator.clipboard.writeText(s); logGood("Seed kopiert."); playClick(640,0.05); }
+    catch{ logWarn("Clipboard nicht verfügbar."); playClick(160,0.05); }
+  });
+  btnPasteSeed.addEventListener("click", async ()=>{
+    try{
+      const s = (await navigator.clipboard.readText()).trim();
+      if(!s){ logWarn("Clipboard leer."); return; }
+      seedLabel.textContent=s;
+      logGood("Seed eingefügt.");
+      playClick(640,0.05);
+      // start with that seed
+      startRun(s);
+    }catch{
+      logWarn("Clipboard nicht verfügbar.");
+      playClick(160,0.05);
+    }
+  });
+
+  btnToggleSound.addEventListener("click", async ()=>{
+    audioEnabled = !audioEnabled;
+    btnToggleSound.textContent = `Sound: ${audioEnabled ? "an" : "aus"}`;
+    if(audioEnabled){
+      try{ await (audioCtx?.resume?.() ?? Promise.resolve()); }catch{}
+      startRainAmbience();
+      playClick(520,0.05);
+    }else{
+      stopRainAmbience();
+    }
+  });
+
+  btnRM.addEventListener("click", ()=>{
+    S.reduceMotion = !S.reduceMotion;
+    safeLocalSet("ir9_rm_v1", S.reduceMotion);
+    document.body.classList.toggle("rm", S.reduceMotion);
+    btnRM.textContent = `Reduce Motion: ${S.reduceMotion ? "an" : "aus"}`;
+    playClick(420,0.04);
+  });
+
+  btnZoomIn.addEventListener("click", ()=>{
+    S.zoom = clamp(S.zoom + 0.12, 0.7, 1.65);
+    playClick(480,0.04);
+    renderAll();
+  });
+  btnZoomOut.addEventListener("click", ()=>{
+    S.zoom = clamp(S.zoom - 0.12, 0.7, 1.65);
+    playClick(360,0.04);
+    renderAll();
+  });
+  btnCenter.addEventListener("click", ()=>{
+    if(S.run){
+      S.cam.x = S.run.player.x;
+      S.cam.y = S.run.player.y;
+      playClick(420,0.04);
+      renderAll();
+    }
+  });
+
+  // ---------- FX (glitch rain words) ----------
+  let t0 = 0;
+  const rain = {
+    cols: [],
+    init(){
+      const ctx = fx.getContext("2d");
+      const w = fx.width, h = fx.height;
+      const colW = Math.max(10, Math.floor(w/70));
+      const n = Math.floor(w/colW);
+      this.cols = Array.from({length:n}, (_,i)=>({
+        x: i*colW + (Math.random()*colW),
+        y: Math.random()*h,
+        s: 0.6 + Math.random()*1.4,
+        drop: 12 + Math.random()*26,
+        wob: Math.random()*1000,
+      }));
+    },
+    step(dt){
+      const ctx = fx.getContext("2d");
+      const w = fx.width, h = fx.height;
+
+      ctx.clearRect(0,0,w,h);
+      if(S.reduceMotion) return;
+
+      ctx.globalAlpha = 0.55;
+      ctx.font = `${Math.floor(14*(window.devicePixelRatio||1))}px ${getComputedStyle(document.body).fontFamily}`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+
+      const glyphs = ["IR9","RECON","CACHE","GLITCH","EXIT","NODE","RUN","SEED","PERK","SYNC","SIG"];
+      for(const c of this.cols){
+        c.y += c.drop * c.s * (dt/16.7);
+        c.wob += dt;
+        const xx = c.x + Math.sin(c.wob/800)*14*(window.devicePixelRatio||1);
+        const text = glyphs[(Math.floor((c.wob/200)+c.x) % glyphs.length + glyphs.length)%glyphs.length];
+
+        const grad = ctx.createLinearGradient(0, c.y, 0, c.y + 90*(window.devicePixelRatio||1));
+        grad.addColorStop(0, "rgba(120,230,255,0.0)");
+        grad.addColorStop(0.35, "rgba(120,230,255,0.55)");
+        grad.addColorStop(1, "rgba(170,120,255,0.0)");
+        ctx.fillStyle = grad;
+
+        ctx.fillText(text, xx, c.y);
+
+        if(c.y > h + 60*(window.devicePixelRatio||1)){
+          c.y = -Math.random()*200*(window.devicePixelRatio||1);
+          c.drop = 12 + Math.random()*26;
+          c.s = 0.6 + Math.random()*1.4;
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+  };
+
+  function tick(ts){
+    if(!t0) t0 = ts;
+    const dt = ts - t0;
+    t0 = ts;
+    // regen buff expiry
+    if(S.run?.runFlags?.buffRegenTurns){
+      S.run.runFlags.buffRegenTurns--;
+      if(S.run.runFlags.buffRegenTurns<=0){
+        S.run.player.staRegen = Math.max(1, S.run.player.staRegen - 1);
+        S.run.runFlags.buffRegenTurns=0;
+        logMuted("Fokus-Buff endet.");
+        updateHUD();
+      }
+    }
+    rain.step(dt);
+    requestAnimationFrame(tick);
+  }
+
+  // ---------- Roman numerals ----------
+  function roman(n){
+    n = Math.max(1, Math.floor(n));
+    const map = [
+      [10,"X"],[9,"IX"],[8,"VIII"],[7,"VII"],[6,"VI"],[5,"V"],[4,"IV"],[3,"III"],[2,"II"],[1,"I"]
+    ];
+    let s="";
+    while(n>=10){ s+="X"; n-=10; }
+    for(const [v,r] of map){
+      while(n>=v){ s+=r; n-=v; }
+    }
+    return s || "I";
+  }
+
+  // ---------- Boot ----------
+  document.body.classList.toggle("rm", S.reduceMotion);
+  btnRM.textContent = `Reduce Motion: ${S.reduceMotion ? "an" : "aus"}`;
+  btnToggleSound.textContent = `Sound: ${audioEnabled ? "an" : "aus"}`;
+  seedLabel.textContent = newSeed();
+  dangerLabel.textContent = "I";
+  objectiveLabel.textContent = "—";
+
+  // start on user gesture for audio resume; but ambience starts when run starts
+  renderAll();
+  resize();
+  rain.init();
+  requestAnimationFrame(tick);
+
+  // polite-ish: if user clicks anywhere, resume audio context if needed
+  document.addEventListener("pointerdown", async ()=>{
+    if(audioCtx && audioCtx.state==="suspended"){
+      try{ await audioCtx.resume(); }catch{}
+    }
+  }, {passive:true});
+
+})();
+</script>
+</body>
+</html>
