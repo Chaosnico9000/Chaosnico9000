@@ -1,0 +1,2266 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="color-scheme" content="dark light" />
+  <title>Veyl • Hardened Vault</title>
+
+  <!-- Für echtes Hosting: Security Header als RESPONSE HEADER setzen (siehe Nginx unten). -->
+  <meta http-equiv="Referrer-Policy" content="no-referrer" />
+
+  <!-- Argon2id (WASM) – lege diese Datei + argon2.wasm neben index.html
+       Falls nicht vorhanden: App fällt auf PBKDF2 zurück und warnt sichtbar. -->
+  <script src="./argon2-bundled.min.js" defer></script>
+
+  <style>
+    :root{
+      --bg0:#070A12; --bg1:#0A1020; --bg2:#0D1730;
+      --card: rgba(255,255,255,.06);
+      --stroke: rgba(255,255,255,.10);
+      --text: rgba(245,250,255,.92);
+      --muted: rgba(245,250,255,.68);
+      --muted2: rgba(245,250,255,.52);
+      --danger: #ff4d6d;
+      --warn: #ffcc00;
+      --ok: #2ee59d;
+      --accent: #7aa2ff;
+      --accent2:#56f0ff;
+      --shadow: 0 20px 80px rgba(0,0,0,.52);
+      --shadow2: 0 14px 40px rgba(0,0,0,.40);
+      --radius: 18px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: var(--sans);
+      color: var(--text);
+      background:
+        radial-gradient(1200px 800px at 15% 10%, rgba(122,162,255,.20), transparent 55%),
+        radial-gradient(900px 700px at 85% 20%, rgba(86,240,255,.14), transparent 60%),
+        radial-gradient(1100px 900px at 50% 105%, rgba(46,229,157,.10), transparent 55%),
+        linear-gradient(180deg, var(--bg0), var(--bg1) 55%, var(--bg2));
+      overflow-x:hidden;
+    }
+    @media (prefers-reduced-motion: reduce){
+      body::before{ animation:none !important; }
+      *{ scroll-behavior:auto !important; transition:none !important; }
+    }
+    body::before{
+      content:"";
+      position:fixed; inset:-40px;
+      background:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.22'/%3E%3C/svg%3E");
+      mix-blend-mode: overlay;
+      opacity:.12;
+      pointer-events:none;
+      animation: drift 10s linear infinite;
+    }
+    @keyframes drift{ from{ transform:translate3d(0,0,0)} to{ transform:translate3d(-40px,-30px,0)} }
+
+    button, input, textarea, select{font:inherit}
+    .wrap{ max-width:1180px; margin:0 auto; padding:18px 18px 34px; }
+    .topbar{
+      position:sticky; top:0; z-index:50;
+      padding:14px 18px;
+      margin:0 -18px 18px;
+      backdrop-filter: blur(14px);
+      background: linear-gradient(180deg, rgba(10,14,25,.82), rgba(10,14,25,.55));
+      border-bottom:1px solid rgba(255,255,255,.08);
+    }
+    .topbar-inner{ max-width:1180px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .brand{ display:flex; align-items:center; gap:10px; user-select:none; }
+    .brand .logo{
+      width:38px; height:38px; border-radius:14px;
+      background:
+        radial-gradient(16px 16px at 30% 30%, rgba(255,255,255,.35), transparent 70%),
+        linear-gradient(135deg, rgba(122,162,255,.65), rgba(86,240,255,.35));
+      box-shadow: 0 12px 30px rgba(122,162,255,.18);
+      border:1px solid rgba(255,255,255,.18);
+      display:grid; place-items:center;
+    }
+    .brand .name{ display:flex; flex-direction:column; line-height:1.05; }
+    .brand .name b{ font-size:15px; letter-spacing:.3px }
+    .brand .name span{ font-size:12px; color:var(--muted); margin-top:2px }
+
+    .right{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+    .pill{
+      display:flex; align-items:center; gap:8px;
+      padding:8px 10px;
+      border-radius:999px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.10);
+      color: var(--muted);
+      box-shadow: 0 12px 28px rgba(0,0,0,.20);
+      white-space:nowrap;
+      cursor:pointer;
+    }
+    .pill b{ color:var(--text); font-weight:600 }
+    .dot{ width:8px; height:8px; border-radius:50%; background: rgba(255,255,255,.25); box-shadow:0 0 0 4px rgba(255,255,255,.06); }
+    .dot.ok{ background: var(--ok); box-shadow:0 0 0 4px rgba(46,229,157,.16) }
+    .dot.warn{ background: var(--warn); box-shadow:0 0 0 4px rgba(255,204,0,.14) }
+    .dot.bad{ background: var(--danger); box-shadow:0 0 0 4px rgba(255,77,109,.16) }
+
+    .btn{
+      cursor:pointer;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      border-radius: 12px;
+      padding:10px 12px;
+      display:inline-flex; align-items:center; gap:8px;
+      transition: transform .08s ease, background .2s ease, border-color .2s ease;
+      box-shadow: var(--shadow2);
+      user-select:none;
+    }
+    .btn:hover{ background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.20) }
+    .btn:active{ transform: translateY(1px) }
+    .btn.primary{ background: linear-gradient(135deg, rgba(122,162,255,.55), rgba(86,240,255,.30)); border-color: rgba(255,255,255,.22); }
+    .btn.danger{ background: rgba(255,77,109,.14); border-color: rgba(255,77,109,.35); }
+    .btn.ghost{ background: transparent; box-shadow:none; border-color: rgba(255,255,255,.10); }
+    .btn.small{ padding:8px 10px; border-radius:11px; box-shadow:none }
+    .btn.icon{ width:40px; height:40px; padding:0; justify-content:center; }
+    .btn[disabled]{ opacity:.55; cursor:not-allowed; transform:none }
+
+    :focus-visible{ outline:2px solid rgba(122,162,255,.55); outline-offset:2px; border-radius:12px; }
+
+    .grid{ display:grid; grid-template-columns: 1.05fr .95fr; gap:16px; }
+    @media (max-width:980px){ .grid{ grid-template-columns:1fr; } .topbar{ position:relative; top:auto; } }
+
+    .card{
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.045));
+      border:1px solid rgba(255,255,255,.10);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .card .hd{
+      padding:16px 16px 12px;
+      display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      background: rgba(0,0,0,.12);
+    }
+    .card .hd .title{ display:flex; flex-direction:column; gap:4px; }
+    .card .hd .title b{ font-size:14px; letter-spacing:.2px }
+    .card .hd .title span{ font-size:12px; color:var(--muted) }
+    .card .bd{ padding:16px; }
+
+    .tabs{ display:flex; gap:8px; flex-wrap:wrap; }
+    .tab{
+      padding:9px 12px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+      color: var(--muted);
+      cursor:pointer;
+      transition: background .2s ease, border-color .2s ease;
+      user-select:none;
+    }
+    .tab.active{ background: rgba(122,162,255,.18); border-color: rgba(122,162,255,.35); color: var(--text); }
+    .tab.disabled{ opacity:.45; cursor:not-allowed; }
+
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center }
+    .col{ display:flex; flex-direction:column; gap:10px }
+
+    .field{ display:flex; flex-direction:column; gap:6px; }
+    .label{ font-size:12px; color:var(--muted); display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .input, textarea, select{
+      width:100%;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.20);
+      color: var(--text);
+      padding:11px 12px;
+      outline:none;
+      transition: border-color .2s ease, background .2s ease;
+    }
+    .input:focus, textarea:focus, select:focus{ border-color: rgba(122,162,255,.45); background: rgba(0,0,0,.26); }
+    textarea{ min-height:104px; resize: vertical; }
+
+    .hint{ font-size:12px; color: var(--muted2); line-height:1.35; }
+    .hr{ height:1px; background: rgba(255,255,255,.09); margin:14px 0; }
+
+    .kpi{ display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; }
+    @media (max-width:980px){ .kpi{ grid-template-columns:1fr; } }
+    .kpi .box{
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.05);
+      padding:12px;
+      display:flex; flex-direction:column; gap:6px;
+    }
+    .kpi .box b{ font-size:18px; letter-spacing:.2px }
+    .kpi .box span{ font-size:12px; color:var(--muted) }
+
+    .list{ display:flex; flex-direction:column; gap:10px; max-height:62vh; overflow:auto; padding-right:2px; }
+    .item{
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.05);
+      padding:12px;
+      display:flex; gap:12px; align-items:flex-start; justify-content:space-between;
+      cursor:pointer;
+      transition: background .2s ease, border-color .2s ease, transform .08s ease;
+    }
+    .item:hover{ background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.16); }
+    .item:active{ transform: translateY(1px) }
+    .item.selected{ background: rgba(122,162,255,.12); border-color: rgba(122,162,255,.30); }
+    .meta{ display:flex; flex-direction:column; gap:6px; min-width:0; }
+    .meta b{ font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .sub{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; color:var(--muted); font-size:12px; }
+
+    .chip{
+      display:inline-flex; align-items:center; gap:6px;
+      padding:4px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+      color: var(--muted);
+      font-size:12px;
+    }
+    .chip.accent{ border-color: rgba(122,162,255,.35); background: rgba(122,162,255,.14); color: rgba(245,250,255,.90); }
+    .chip.warn{ border-color: rgba(255,204,0,.35); background: rgba(255,204,0,.12); color: rgba(245,250,255,.92); }
+    .chip.bad{ border-color: rgba(255,77,109,.35); background: rgba(255,77,109,.12); color: rgba(245,250,255,.92); }
+
+    .mono{ font-family: var(--mono); }
+    .tiny{ font-size:11px; color: var(--muted2); }
+
+    .split{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    @media (max-width:980px){ .split{ grid-template-columns:1fr; } }
+
+    .toast-wrap{
+      position:fixed; right:16px; bottom:16px;
+      display:flex; flex-direction:column; gap:10px;
+      z-index:9999;
+      pointer-events:none;
+    }
+    .toast{
+      pointer-events:auto;
+      min-width:240px; max-width:360px;
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(10,14,25,.78);
+      backdrop-filter: blur(14px);
+      box-shadow: var(--shadow);
+      padding:12px;
+      display:flex; gap:10px; align-items:flex-start; justify-content:space-between;
+      animation: pop .18s ease both;
+    }
+    @keyframes pop{ from{ transform:translateY(6px); opacity:0 } to{ transform:translateY(0); opacity:1 } }
+    .toast b{ font-size:12px; display:block; margin-bottom:2px }
+    .toast span{ font-size:12px; color:var(--muted); line-height:1.35 }
+    .toast .x{
+      border:none; background:transparent;
+      color: rgba(245,250,255,.70);
+      cursor:pointer;
+      padding:6px 8px;
+      border-radius:10px;
+    }
+    .toast .x:hover{ background: rgba(255,255,255,.06) }
+
+    .modal-back{
+      position:fixed; inset:0;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(8px);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:9998;
+      padding:18px;
+    }
+    .modal{
+      width: min(820px, 100%);
+      border-radius:20px;
+      border:1px solid rgba(255,255,255,.12);
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .modal .hd{
+      padding:16px 16px 12px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
+      background: rgba(0,0,0,.14);
+    }
+    .modal .bd{ padding:16px; }
+    .modal-back.show{ display:flex; }
+
+    .footer-note{
+      margin-top:14px;
+      padding:12px 14px;
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+      color: var(--muted);
+      font-size:12px;
+      line-height:1.4;
+    }
+
+    .meter{
+      height:10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      overflow:hidden;
+    }
+    .meter > i{
+      display:block; height:100%; width:0%;
+      background: linear-gradient(90deg, rgba(255,77,109,.90), rgba(255,204,0,.85), rgba(46,229,157,.90));
+    }
+    .kbd{
+      font-family: var(--mono);
+      font-size:11px;
+      color: rgba(245,250,255,.78);
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(0,0,0,.22);
+      padding:2px 6px;
+      border-radius:8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M7 10V8a5 5 0 0 1 10 0v2" stroke="rgba(255,255,255,.92)" stroke-width="2" stroke-linecap="round"/>
+            <path d="M6 10h12a2 2 0 0 1 2 2v7a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-7a2 2 0 0 1 2-2Z" stroke="rgba(255,255,255,.92)" stroke-width="2" />
+            <path d="M12 14v4" stroke="rgba(255,255,255,.92)" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="name">
+          <b>Veyl</b>
+          <span>Hardened Offline Vault • WebCrypto + Argon2id (WASM)</span>
+        </div>
+      </div>
+
+      <div class="right">
+        <div class="pill" id="statusPill" title="Security/Build anzeigen">
+          <span class="dot" id="statusDot"></span>
+          <span id="statusText"><b>Initialisiere…</b></span>
+        </div>
+        <button class="btn icon" id="lockBtn" title="Sperren" aria-label="Sperren">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M7 10V8a5 5 0 0 1 10 0v2" stroke="rgba(245,250,255,.92)" stroke-width="2" stroke-linecap="round"/>
+            <path d="M6 10h12a2 2 0 0 1 2 2v7a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-7a2 2 0 0 1 2-2Z" stroke="rgba(245,250,255,.92)" stroke-width="2" />
+          </svg>
+        </button>
+        <button class="btn primary" id="newEntryBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" stroke="rgba(245,250,255,.92)" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          Neuer Eintrag
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="grid">
+      <!-- LEFT -->
+      <section class="card">
+        <div class="hd">
+          <div class="title">
+            <b>Vault</b>
+            <span id="leftSubtitle">Erstellen oder entsperren.</span>
+          </div>
+          <div class="tabs" id="tabs">
+            <div class="tab active" data-tab="vault">Vault</div>
+            <div class="tab" data-tab="generator">Generator</div>
+            <div class="tab" data-tab="audit">Audit</div>
+            <div class="tab" data-tab="settings">Settings</div>
+          </div>
+        </div>
+
+        <div class="bd">
+          <div class="col" style="gap:12px; margin-bottom:14px;">
+            <div class="kpi">
+              <div class="box"><b id="kpiEntries">0</b><span>Einträge</span></div>
+              <div class="box"><b id="kpiHealth">–</b><span>Vault Health</span></div>
+              <div class="box"><b id="kpiLast">–</b><span>Zuletzt gespeichert</span></div>
+            </div>
+
+            <!-- SETUP -->
+            <div id="setupBox" class="card" style="box-shadow:none;">
+              <div class="hd">
+                <div class="title">
+                  <b>Neuen Vault erstellen</b>
+                  <span>Master-Passwort wird nie gespeichert. Vergiss es nicht. Browser verzeiht nichts.</span>
+                </div>
+                <div class="row">
+                  <span class="chip accent">AES-GCM</span>
+                  <span class="chip">Argon2id → HKDF</span>
+                  <span class="chip">AAD bound</span>
+                </div>
+              </div>
+              <div class="bd">
+                <div class="split">
+                  <div class="field">
+                    <div class="label">Master-Passwort <span class="tiny">12+ empfohlen</span></div>
+                    <input class="input" id="setupPass1" type="password" autocomplete="new-password" placeholder="Master-Passwort" />
+                    <div class="meter"><i id="setupPassMeter"></i></div>
+                  </div>
+                  <div class="field">
+                    <div class="label">Bestätigen</div>
+                    <input class="input" id="setupPass2" type="password" autocomplete="new-password" placeholder="Wiederholen" />
+                    <div class="hint">Passphrase schlägt „P4$$w0rd!!“ fast immer.</div>
+                  </div>
+                </div>
+
+                <div class="split" style="margin-top:10px;">
+                  <div class="field">
+                    <div class="label">Hinweis (optional)</div>
+                    <input class="input" id="setupHint" type="text" placeholder="Wird unverschlüsselt gespeichert (also vorsichtig)" />
+                    <div class="hint">Kein echter Inhalt. Kein „mein Hund heißt…“.</div>
+                  </div>
+
+                  <div class="field">
+                    <div class="label">KDF Modus</div>
+                    <select id="setupKdfMode" class="input">
+                      <option value="argon2id" selected>Argon2id (empfohlen)</option>
+                      <option value="pbkdf2">PBKDF2 (Legacy/Fallback)</option>
+                    </select>
+                    <div class="hint" id="kdfModeHint">Argon2id braucht WASM-Dateien neben der HTML. Sonst wird automatisch PBKDF2 genutzt.</div>
+                  </div>
+                </div>
+
+                <!-- Argon2 params -->
+                <div id="argonBox" class="card" style="box-shadow:none; margin-top:10px;">
+                  <div class="hd">
+                    <div class="title">
+                      <b>Argon2id Parameter</b>
+                      <span>Memory-hard. Angreifer mögen das nicht.</span>
+                    </div>
+                    <div class="row">
+                      <span class="chip" id="argonReadyChip">Argon2: –</span>
+                      <button class="btn small" id="calibrateBtn" title="Kalibriert Argon2 time-cost (nutzt aktuelles Passwortfeld)">Auto</button>
+                    </div>
+                  </div>
+                  <div class="bd">
+                    <div class="split">
+                      <div class="field">
+                        <div class="label">Memory (MiB)</div>
+                        <select id="argonMemMiB" class="input">
+                          <option value="32">32</option>
+                          <option value="64" selected>64 (empfohlen)</option>
+                          <option value="128">128 (stärker)</option>
+                          <option value="256">256 (sehr langsam)</option>
+                        </select>
+                        <div class="hint">Mehr RAM = teurer für GPUs/ASICs. Zu viel = du hasst dich beim Unlock.</div>
+                      </div>
+                      <div class="field">
+                        <div class="label">Time-cost (Iterationen)</div>
+                        <select id="argonTime" class="input">
+                          <option value="2" selected>2</option>
+                          <option value="3">3</option>
+                          <option value="4">4</option>
+                        </select>
+                        <div class="hint">Auto versucht ~250–450ms zu treffen.</div>
+                      </div>
+                    </div>
+
+                    <div class="split" style="margin-top:10px;">
+                      <div class="field">
+                        <div class="label">Parallelism</div>
+                        <select id="argonPar" class="input">
+                          <option value="1">1</option>
+                          <option value="2" selected>2</option>
+                          <option value="4">4</option>
+                        </select>
+                        <div class="hint">Nicht übertreiben. Browser sind keine Rechenzentren.</div>
+                      </div>
+                      <div class="field">
+                        <div class="label">Hinweis</div>
+                        <div class="hint" id="argonWarn">–</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- PBKDF2 params (legacy) -->
+                <div id="pbkdf2Box" class="card" style="box-shadow:none; margin-top:10px; display:none;">
+                  <div class="hd">
+                    <div class="title">
+                      <b>PBKDF2 Parameter (Legacy)</b>
+                      <span>Funktioniert überall. Ist aber nicht memory-hard.</span>
+                    </div>
+                  </div>
+                  <div class="bd">
+                    <div class="field">
+                      <div class="label">Iterationen</div>
+                      <select id="setupIterations" class="input">
+                        <option value="250000">250.000</option>
+                        <option value="350000" selected>350.000 (empfohlen)</option>
+                        <option value="500000">500.000</option>
+                        <option value="750000">750.000 (langsam)</option>
+                        <option value="1000000">1.000.000 (sehr langsam)</option>
+                      </select>
+                      <div class="hint">Ziel: Unlock ~250–400ms.</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="row" style="margin-top:12px; justify-content:space-between;">
+                  <div class="hint">
+                    Shortcut: <span class="kbd">Ctrl</span>+<span class="kbd">K</span> Suche,
+                    <span class="kbd">Ctrl</span>+<span class="kbd">N</span> Neu,
+                    <span class="kbd">Ctrl</span>+<span class="kbd">L</span> Lock
+                  </div>
+                  <button class="btn primary" id="createVaultBtn">Vault erstellen</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- UNLOCK -->
+            <div id="unlockBox" class="card" style="box-shadow:none; display:none;">
+              <div class="hd">
+                <div class="title">
+                  <b>Vault entsperren</b>
+                  <span id="unlockHintText">Hinweis: –</span>
+                </div>
+                <div class="row">
+                  <span class="chip accent" id="secureChip">Secure: –</span>
+                  <span class="chip" id="kdfChip">KDF: –</span>
+                  <span class="chip" id="backoffChip">Backoff: –</span>
+                </div>
+              </div>
+              <div class="bd">
+                <div class="field">
+                  <div class="label">Master-Passwort <span class="tiny">Ctrl+Enter</span></div>
+                  <input class="input" id="unlockPass" type="password" autocomplete="current-password" placeholder="••••••••••" />
+                  <div class="hint" id="unlockWarn">–</div>
+                </div>
+                <div class="row" style="margin-top:12px; justify-content:space-between;">
+                  <div class="row">
+                    <button class="btn primary" id="unlockBtn">Entsperren</button>
+                    <button class="btn ghost" id="showHintBtn" title="Hinweis anzeigen">Hinweis</button>
+                  </div>
+                  <button class="btn" id="exportEncryptedBtn">Export (verschlüsselt)</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- VAULT TAB -->
+          <div id="tab-vault">
+            <div class="split" style="margin-bottom:10px;">
+              <div class="field">
+                <div class="label">Suche</div>
+                <input class="input" id="searchInput" placeholder="Titel, User, URL, Tags, Notizen..." />
+              </div>
+              <div class="field">
+                <div class="label">Filter</div>
+                <div class="row" style="gap:8px;">
+                  <select id="folderFilter" class="input" style="flex:1;">
+                    <option value="">Alle Ordner</option>
+                  </select>
+                  <button class="btn small" id="toggleFavFilter" title="Nur Favoriten"><span class="mono">★</span> Fav</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="row" style="justify-content:space-between; margin: 6px 0 10px;">
+              <div class="row">
+                <span class="chip" id="countChip">0</span>
+                <span class="chip" id="lockChip">Gesperrt</span>
+                <span class="chip" id="buildChip">Build: –</span>
+              </div>
+              <div class="row">
+                <button class="btn small" id="importBtn">Import</button>
+                <button class="btn small" id="exportBtn">Export</button>
+              </div>
+            </div>
+
+            <div class="list" id="entryList"></div>
+
+            <div class="footer-note" id="hostingNote">
+              Hosting-Hinweis: Der Server sieht deine Passwörter nicht (Client-seitig verschlüsselt).
+              Aber: wenn der Server kompromittiert wird, kann er dir bösartigen Code ausliefern.
+              Deshalb: TLS + Security-Header + (optional) Build-Fingerprint prüfen.
+            </div>
+          </div>
+
+          <!-- GENERATOR TAB -->
+          <div id="tab-generator" style="display:none;">
+            <div class="card" style="box-shadow:none;">
+              <div class="hd">
+                <div class="title">
+                  <b>Passwort-Generator</b>
+                  <span>Stark generieren ist leicht. Stark benutzen ist das menschliche Problem.</span>
+                </div>
+                <div class="row">
+                  <button class="btn small" id="genNewBtn">Neu</button>
+                  <button class="btn small" id="genCopyBtn">Kopieren</button>
+                </div>
+              </div>
+              <div class="bd">
+                <div class="field">
+                  <div class="label">Passwort</div>
+                  <input class="input mono" id="genOut" readonly />
+                  <div class="meter"><i id="genMeter"></i></div>
+                  <div class="row" style="justify-content:space-between;">
+                    <span class="hint" id="genStats">–</span>
+                    <span class="hint">Entropy (grob): <span class="mono" id="genEntropy">–</span></span>
+                  </div>
+                </div>
+
+                <div class="hr"></div>
+
+                <div class="split">
+                  <div class="field">
+                    <div class="label">Länge: <span class="mono" id="lenVal">24</span></div>
+                    <input id="len" type="range" min="8" max="64" value="24" />
+                    <div class="hint">Unter 12 ist „Optimismus“. Unter 10 ist „Selbstbetrug“.</div>
+                  </div>
+                  <div class="col" style="gap:8px;">
+                    <label class="row" style="gap:8px; cursor:pointer;"><input type="checkbox" id="optLower" checked> <span>Kleinbuchstaben</span></label>
+                    <label class="row" style="gap:8px; cursor:pointer;"><input type="checkbox" id="optUpper" checked> <span>Großbuchstaben</span></label>
+                    <label class="row" style="gap:8px; cursor:pointer;"><input type="checkbox" id="optDigits" checked> <span>Ziffern</span></label>
+                    <label class="row" style="gap:8px; cursor:pointer;"><input type="checkbox" id="optSymbols" checked> <span>Symbole</span></label>
+                    <label class="row" style="gap:8px; cursor:pointer;"><input type="checkbox" id="optNoAmb" checked> <span>Keine ambigen Zeichen (O0Il1…)</span></label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- AUDIT TAB -->
+          <div id="tab-audit" style="display:none;">
+            <div class="card" style="box-shadow:none;">
+              <div class="hd">
+                <div class="title">
+                  <b>Vault Audit</b>
+                  <span>Weak/Reuse/Duplicate. Nicht perfekt, aber besser als nichts.</span>
+                </div>
+                <button class="btn small" id="runAuditBtn">Audit laufen lassen</button>
+              </div>
+              <div class="bd">
+                <div class="kpi">
+                  <div class="box"><b id="auditWeak">–</b><span>Weak</span></div>
+                  <div class="box"><b id="auditReuse">–</b><span>Wiederverwendet</span></div>
+                  <div class="box"><b id="auditDup">–</b><span>Duplikate</span></div>
+                </div>
+                <div class="hr"></div>
+                <div class="field">
+                  <div class="label">Probleme</div>
+                  <div class="list" id="auditList" style="max-height:46vh;"></div>
+                  <div class="hint">Heuristik, kein magisches Wahrheitsorakel.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SETTINGS TAB -->
+          <div id="tab-settings" style="display:none;">
+            <div class="card" style="box-shadow:none;">
+              <div class="hd">
+                <div class="title">
+                  <b>Settings</b>
+                  <span>Auto-Lock, Clipboard, Host-Checks, Import/Export.</span>
+                </div>
+              </div>
+              <div class="bd">
+                <div class="split">
+                  <div class="field">
+                    <div class="label">Auto-Lock nach (Minuten)</div>
+                    <select id="autoLockMinutes" class="input">
+                      <option value="0">Aus</option>
+                      <option value="2">2</option>
+                      <option value="5" selected>5</option>
+                      <option value="10">10</option>
+                      <option value="15">15</option>
+                      <option value="30">30</option>
+                    </select>
+                    <div class="hint">Sperrt bei Inaktivität.</div>
+                  </div>
+
+                  <div class="field">
+                    <div class="label">Clipboard Auto-Clear (Sekunden)</div>
+                    <select id="clipClearSeconds" class="input">
+                      <option value="0">Aus</option>
+                      <option value="10">10</option>
+                      <option value="20" selected>20</option>
+                      <option value="30">30</option>
+                      <option value="60">60</option>
+                    </select>
+                    <div class="hint">Best effort. Browser machen Browser-Dinge.</div>
+                  </div>
+                </div>
+
+                <div class="split" style="margin-top:10px;">
+                  <div class="field">
+                    <div class="label">Lock bei Tab-Hide</div>
+                    <select id="lockOnHide" class="input">
+                      <option value="0">Aus</option>
+                      <option value="1" selected>An</option>
+                    </select>
+                    <div class="hint">Wenn du Tabs wechselst, sperrt er.</div>
+                  </div>
+
+                  <div class="field">
+                    <div class="label">Unsicheres HTTP blockieren</div>
+                    <select id="blockInsecure" class="input">
+                      <option value="0">Warnen</option>
+                      <option value="1" selected>Unlock blocken (außer localhost/file)</option>
+                    </select>
+                    <div class="hint">Wenn du hostest: nutz HTTPS. Punkt.</div>
+                  </div>
+                </div>
+
+                <div class="hr"></div>
+
+                <div class="split">
+                  <div class="field">
+                    <div class="label">Export</div>
+                    <div class="row">
+                      <button class="btn" id="settingsExportEncrypted">Export (verschlüsselt)</button>
+                      <button class="btn" id="settingsExportDecrypted">Export (entschlüsselt)</button>
+                    </div>
+                    <div class="hint">Entschlüsselt ist praktisch und brandgefährlich.</div>
+                  </div>
+
+                  <div class="field">
+                    <div class="label">Import</div>
+                    <div class="row">
+                      <button class="btn" id="settingsImport">Import (verschlüsselt)</button>
+                      <button class="btn" id="settingsImportDecrypted">Import (entschlüsselt)</button>
+                    </div>
+                    <div class="hint">Decrypted nur für Migration.</div>
+                  </div>
+                </div>
+
+                <div class="hr"></div>
+
+                <div class="card" style="box-shadow:none;">
+                  <div class="hd">
+                    <div class="title">
+                      <b>Hosting/Security Status</b>
+                      <span>Was du siehst: Client-Checks. Was du nicht siehst: ob dein Server kompromittiert ist.</span>
+                    </div>
+                    <button class="btn small" id="copyNginxBtn">Nginx Snippet kopieren</button>
+                  </div>
+                  <div class="bd">
+                    <div class="row">
+                      <span class="chip" id="hostChip">Host: –</span>
+                      <span class="chip" id="ctxChip">Context: –</span>
+                      <span class="chip" id="argonChip">Argon2: –</span>
+                      <span class="chip" id="isoChip">Isolation: –</span>
+                    </div>
+                    <div class="hint" style="margin-top:10px;" id="hostHint">–</div>
+                  </div>
+                </div>
+
+                <div class="hr"></div>
+
+                <div class="field">
+                  <div class="label">Gefahrenzone</div>
+                  <div class="row" style="justify-content:space-between;">
+                    <div class="hint">Löscht den Vault aus Storage. Kein Undo.</div>
+                    <button class="btn danger" id="wipeBtn">Vault löschen</button>
+                  </div>
+                </div>
+
+                <div class="footer-note">
+                  Crypto: Argon2id (WASM) → HKDF → AES-256-GCM (AAD bound). Fallback: PBKDF2(SHA-256) → HKDF → AES-GCM.
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- RIGHT -->
+      <section class="card">
+        <div class="hd">
+          <div class="title">
+            <b>Detail</b>
+            <span id="detailSubtitle">Wähle einen Eintrag oder erstelle einen neuen.</span>
+          </div>
+          <div class="row">
+            <button class="btn small" id="saveBtn" disabled>Speichern</button>
+            <button class="btn small" id="deleteBtn" disabled>Löschen</button>
+          </div>
+        </div>
+
+        <div class="bd">
+          <div class="col" style="gap:12px;">
+            <div class="field"><div class="label">Titel</div><input class="input" id="fTitle" disabled /></div>
+
+            <div class="split">
+              <div class="field"><div class="label">Benutzername</div><input class="input" id="fUser" disabled /></div>
+              <div class="field"><div class="label">Ordner</div><input class="input" id="fFolder" disabled /></div>
+            </div>
+
+            <div class="field">
+              <div class="label">
+                Passwort
+                <span class="row" style="gap:8px;">
+                  <button class="btn small" id="pwRevealBtn" disabled>Anzeigen</button>
+                  <button class="btn small" id="pwCopyBtn" disabled>Kopieren</button>
+                  <button class="btn small" id="pwGenBtn" disabled>Gen</button>
+                </span>
+              </div>
+              <input class="input mono" id="fPass" type="password" disabled />
+              <div class="meter"><i id="pwMeter"></i></div>
+              <div class="hint" id="pwHint">–</div>
+            </div>
+
+            <div class="field"><div class="label">URL</div><input class="input" id="fUrl" disabled /></div>
+            <div class="field"><div class="label">Tags (Komma)</div><input class="input" id="fTags" disabled /></div>
+            <div class="field"><div class="label">Notizen</div><textarea id="fNotes" disabled></textarea></div>
+
+            <div class="row" style="justify-content:space-between;">
+              <div class="row">
+                <button class="btn small" id="favBtn" disabled><span class="mono">★</span> Fav</button>
+                <a class="btn small ghost" id="openUrlBtn" target="_blank" rel="noreferrer noopener" style="text-decoration:none; display:none;">Öffnen</a>
+              </div>
+              <div class="tiny" id="metaInfo">–</div>
+            </div>
+
+            <div class="footer-note">
+              JS kann Memory nicht sicher „nullen“. Lock = best effort. Wenn dein System kompromittiert ist, bist du kompromittiert.
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- MODAL -->
+  <div class="modal-back" id="modalBack" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="hd">
+        <div class="title"><b id="modalTitle">Modal</b><span id="modalSub">–</span></div>
+        <button class="btn icon" id="modalClose" aria-label="Schließen">✕</button>
+      </div>
+      <div class="bd" id="modalBody"></div>
+    </div>
+  </div>
+
+  <div class="toast-wrap" id="toasts"></div>
+  <input type="file" id="filePick" accept=".json,.veyl,application/json" style="display:none" />
+
+  <script type="module">
+    const STORAGE_KEYS = ["veyl.vault.v3", "veyl.vault.v2"];
+    const SETTINGS_KEY = "veyl.settings.v3";
+    const APP = "Veyl";
+    const VERSION = 3;
+
+    const enc = new TextEncoder();
+    const dec = new TextDecoder();
+    const $ = (id) => document.getElementById(id);
+
+    const nowIso = () => new Date().toISOString();
+    const fmtTime = (iso) => iso ? new Date(iso).toLocaleString(undefined, {year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}) : "–";
+    const uid = () => crypto.getRandomValues(new Uint32Array(4)).join("-");
+
+    // --- UI refs ---
+    const statusPill = $("statusPill");
+    const statusDot = $("statusDot"), statusText = $("statusText");
+    const lockBtn = $("lockBtn"), newEntryBtn = $("newEntryBtn");
+
+    const setupBox = $("setupBox"), unlockBox = $("unlockBox");
+    const setupPass1 = $("setupPass1"), setupPass2 = $("setupPass2"), setupHint = $("setupHint");
+    const setupKdfMode = $("setupKdfMode");
+    const argonBox = $("argonBox"), pbkdf2Box = $("pbkdf2Box");
+    const argonMemMiB = $("argonMemMiB"), argonTime = $("argonTime"), argonPar = $("argonPar");
+    const argonReadyChip = $("argonReadyChip"), argonWarn = $("argonWarn");
+    const setupIterations = $("setupIterations"), calibrateBtn = $("calibrateBtn"), setupPassMeter = $("setupPassMeter");
+    const createVaultBtn = $("createVaultBtn");
+
+    const unlockPass = $("unlockPass"), unlockBtn = $("unlockBtn"), showHintBtn = $("showHintBtn");
+    const unlockHintText = $("unlockHintText"), unlockWarn = $("unlockWarn");
+    const exportEncryptedBtn = $("exportEncryptedBtn");
+    const secureChip = $("secureChip"), backoffChip = $("backoffChip"), kdfChip = $("kdfChip");
+
+    const tabs = $("tabs"), leftSubtitle = $("leftSubtitle");
+    const tabVault = $("tab-vault"), tabGen = $("tab-generator"), tabAudit = $("tab-audit"), tabSettings = $("tab-settings");
+
+    const searchInput = $("searchInput"), folderFilter = $("folderFilter"), toggleFavFilter = $("toggleFavFilter");
+    const entryList = $("entryList");
+    const importBtn = $("importBtn"), exportBtn = $("exportBtn");
+
+    const countChip = $("countChip"), lockChip = $("lockChip"), buildChip = $("buildChip");
+
+    const saveBtn = $("saveBtn"), deleteBtn = $("deleteBtn"), detailSubtitle = $("detailSubtitle");
+    const fTitle = $("fTitle"), fUser = $("fUser"), fFolder = $("fFolder"), fPass = $("fPass"), fUrl = $("fUrl"), fTags = $("fTags"), fNotes = $("fNotes");
+    const favBtn = $("favBtn"), openUrlBtn = $("openUrlBtn"), metaInfo = $("metaInfo");
+    const pwRevealBtn = $("pwRevealBtn"), pwCopyBtn = $("pwCopyBtn"), pwGenBtn = $("pwGenBtn");
+    const pwMeter = $("pwMeter"), pwHint = $("pwHint");
+
+    const kpiEntries = $("kpiEntries"), kpiHealth = $("kpiHealth"), kpiLast = $("kpiLast");
+
+    // generator
+    const len = $("len"), lenVal = $("lenVal");
+    const optLower = $("optLower"), optUpper = $("optUpper"), optDigits = $("optDigits"), optSymbols = $("optSymbols"), optNoAmb = $("optNoAmb");
+    const genOut = $("genOut"), genNewBtn = $("genNewBtn"), genCopyBtn = $("genCopyBtn");
+    const genMeter = $("genMeter"), genEntropy = $("genEntropy"), genStats = $("genStats");
+
+    // audit
+    const runAuditBtn = $("runAuditBtn"), auditWeak = $("auditWeak"), auditReuse = $("auditReuse"), auditDup = $("auditDup"), auditList = $("auditList");
+
+    // settings
+    const autoLockMinutes = $("autoLockMinutes"), clipClearSeconds = $("clipClearSeconds");
+    const lockOnHide = $("lockOnHide"), blockInsecure = $("blockInsecure");
+    const settingsExportEncrypted = $("settingsExportEncrypted"), settingsExportDecrypted = $("settingsExportDecrypted");
+    const settingsImport = $("settingsImport"), settingsImportDecrypted = $("settingsImportDecrypted");
+    const wipeBtn = $("wipeBtn");
+
+    // hosting status
+    const hostChip = $("hostChip"), ctxChip = $("ctxChip"), argonChip = $("argonChip"), isoChip = $("isoChip"), hostHint = $("hostHint");
+    const copyNginxBtn = $("copyNginxBtn");
+
+    // modal + file
+    const modalBack = $("modalBack"), modalTitle = $("modalTitle"), modalSub = $("modalSub"), modalBody = $("modalBody"), modalClose = $("modalClose");
+    const filePick = $("filePick");
+
+    const state = {
+      unlocked: false,
+      encKey: null,
+      vault: null,
+      selectedId: null,
+      favFilter: false,
+      lastActivity: Date.now(),
+      autoLockTimer: null,
+      clipTimer: null,
+      failedUnlocks: 0,
+      nextUnlockAt: 0,
+      settings: loadSettings(),
+      buildId: "–",
+    };
+
+    // ---------- UI helpers ----------
+    function toast(title, message, kind="info", ms=3500){
+      const wrap = $("toasts");
+      const el = document.createElement("div");
+      el.className = "toast";
+      const dot = document.createElement("div");
+      dot.className = "dot " + (kind==="ok"?"ok":kind==="warn"?"warn":kind==="bad"?"bad":"");
+      dot.style.marginTop = "6px";
+
+      const main = document.createElement("div");
+      main.style.display = "flex";
+      main.style.gap = "10px";
+      main.style.alignItems = "flex-start";
+      main.style.flex = "1";
+
+      const text = document.createElement("div");
+      const b = document.createElement("b"); b.textContent = title;
+      const s = document.createElement("span"); s.textContent = message;
+      text.appendChild(b); text.appendChild(s);
+
+      const x = document.createElement("button");
+      x.className = "x"; x.setAttribute("aria-label","Schließen"); x.textContent = "✕";
+      x.onclick = () => el.remove();
+
+      main.appendChild(dot);
+      main.appendChild(text);
+      el.appendChild(main);
+      el.appendChild(x);
+      wrap.appendChild(el);
+      setTimeout(() => el.remove(), ms);
+    }
+
+    function showModal(title, sub, node){
+      modalTitle.textContent = title;
+      modalSub.textContent = sub || "–";
+      modalBody.textContent = "";
+      modalBody.appendChild(node);
+      modalBack.classList.add("show");
+    }
+    function closeModal(){
+      modalBack.classList.remove("show");
+      modalBody.textContent = "";
+    }
+    modalClose.onclick = closeModal;
+    modalBack.addEventListener("click", (e)=>{ if(e.target === modalBack) closeModal(); });
+    window.addEventListener("keydown", (e)=>{ if(e.key === "Escape") closeModal(); });
+
+    // ---------- Settings ----------
+    function loadSettings(){
+      try{
+        const raw = localStorage.getItem(SETTINGS_KEY);
+        if(!raw) return { autoLockMinutes:5, clipClearSeconds:20, lockOnHide:1, blockInsecure:1 };
+        const s = JSON.parse(raw);
+        return {
+          autoLockMinutes: Number(s.autoLockMinutes ?? 5),
+          clipClearSeconds: Number(s.clipClearSeconds ?? 20),
+          lockOnHide: Number(s.lockOnHide ?? 1),
+          blockInsecure: Number(s.blockInsecure ?? 1),
+        };
+      }catch{
+        return { autoLockMinutes:5, clipClearSeconds:20, lockOnHide:1, blockInsecure:1 };
+      }
+    }
+    function saveSettings(){
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings));
+    }
+
+    // ---------- Encoding ----------
+    function b64FromBytes(bytes){
+      let bin = "";
+      const chunk = 0x8000;
+      for(let i=0;i<bytes.length;i+=chunk){
+        bin += String.fromCharCode(...bytes.subarray(i, i+chunk));
+      }
+      return btoa(bin);
+    }
+    function bytesFromB64(b64){
+      const bin = atob(b64);
+      const bytes = new Uint8Array(bin.length);
+      for(let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+      return bytes;
+    }
+
+    // ---------- Secure context ----------
+    function isLocalhost(){
+      return location.hostname === "localhost" || location.hostname === "127.0.0.1" || location.hostname === "[::1]";
+    }
+    function isSecureEnough(){
+      if(location.protocol === "file:") return true;
+      if(isLocalhost()) return true;
+      return window.isSecureContext && location.protocol === "https:";
+    }
+    function argon2Ready(){
+      return typeof window.argon2?.hash === "function";
+    }
+
+    // ---------- Crypto ----------
+    async function pbkdf2Bits(password, saltBytes, iterations, bits=256){
+      const baseKey = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveBits"]);
+      return crypto.subtle.deriveBits({ name:"PBKDF2", salt:saltBytes, iterations, hash:"SHA-256" }, baseKey, bits);
+    }
+
+    async function hkdfToAes(secretBytes, saltBytes, infoStr){
+      const hkdfBase = await crypto.subtle.importKey("raw", secretBytes, "HKDF", false, ["deriveKey"]);
+      return crypto.subtle.deriveKey(
+        { name:"HKDF", hash:"SHA-256", salt:saltBytes, info: enc.encode(infoStr) },
+        hkdfBase,
+        { name:"AES-GCM", length:256 },
+        false,
+        ["encrypt","decrypt"]
+      );
+    }
+
+    async function argon2idBytes(password, saltBytes, timeCost, memKiB, parallelism, outLen=32){
+      if(!argon2Ready()) throw new Error("Argon2 not available");
+      const type = window.argon2?.ArgonType?.Argon2id ?? 2; // 2 ist üblich für Argon2id
+      const res = await window.argon2.hash({
+        pass: password,
+        salt: saltBytes,
+        time: Number(timeCost),
+        mem: Number(memKiB),
+        parallelism: Number(parallelism),
+        hashLen: Number(outLen),
+        type,
+      });
+      return res.hash; // Uint8Array
+    }
+
+    async function deriveEncKey(password, kdf){
+      const salt = bytesFromB64(kdf.saltB64);
+      if(kdf.name === "ARGON2ID"){
+        const secret = await argon2idBytes(password, salt, kdf.time, kdf.memKiB, kdf.parallelism, 32);
+        return hkdfToAes(secret, salt, "veyl:enc:v3");
+      }
+      // legacy PBKDF2
+      const secretBits = await pbkdf2Bits(password, salt, Number(kdf.iterations), 256);
+      return hkdfToAes(new Uint8Array(secretBits), salt, "veyl:enc:v2");
+    }
+
+    function buildAad(container){
+      const k = container.kdf;
+      // stabile Metadata-Bindung (tampering => auth fail)
+      const parts = [
+        APP, String(container.version),
+        k.name, k.hash || "SHA-256",
+        k.saltB64,
+        k.name === "ARGON2ID" ? `t=${k.time};m=${k.memKiB};p=${k.parallelism}` : `i=${k.iterations}`
+      ];
+      return enc.encode(parts.join("|"));
+    }
+
+    async function encryptJson(encKey, obj, aadBytes){
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const pt = enc.encode(JSON.stringify(obj));
+      const ct = await crypto.subtle.encrypt({ name:"AES-GCM", iv, additionalData: aadBytes }, encKey, pt);
+      return { iv, ct: new Uint8Array(ct) };
+    }
+
+    async function decryptJson(encKey, ivBytes, ctBytes, aadBytes){
+      const pt = await crypto.subtle.decrypt({ name:"AES-GCM", iv: ivBytes, additionalData: aadBytes }, encKey, ctBytes);
+      return JSON.parse(dec.decode(pt));
+    }
+
+    // ---------- Storage container ----------
+    function loadContainer(){
+      for(const key of STORAGE_KEYS){
+        try{
+          const raw = localStorage.getItem(key);
+          if(!raw) continue;
+          const obj = JSON.parse(raw);
+          if(obj?.app === APP && obj?.kdf?.saltB64 && obj?.blob?.ctB64) return obj;
+        }catch{}
+      }
+      return null;
+    }
+    function saveContainer(container){
+      localStorage.setItem(STORAGE_KEYS[0], JSON.stringify(container));
+      // optional: alte Keys entfernen (damit nicht zwei Container existieren)
+      for(let i=1;i<STORAGE_KEYS.length;i++) localStorage.removeItem(STORAGE_KEYS[i]);
+    }
+
+    // ---------- Vault schema ----------
+    function newVault(){
+      return { app: APP, version: VERSION, createdAt: nowIso(), updatedAt: nowIso(), entries: [] };
+    }
+    function parseTags(s){
+      return String(s ?? "").split(",").map(x=>x.trim()).filter(Boolean).slice(0, 30);
+    }
+    function normalizeEntry(e){
+      return {
+        id: e.id ?? uid(),
+        title: String(e.title ?? ""),
+        username: String(e.username ?? ""),
+        password: String(e.password ?? ""),
+        url: String(e.url ?? ""),
+        notes: String(e.notes ?? ""),
+        tags: Array.isArray(e.tags) ? e.tags.map(String) : parseTags(e.tags ?? ""),
+        folder: String(e.folder ?? ""),
+        favorite: Boolean(e.favorite),
+        createdAt: e.createdAt ?? nowIso(),
+        updatedAt: e.updatedAt ?? nowIso(),
+      };
+    }
+
+    // ---------- Password heuristic ----------
+    function scorePassword(pw){
+      const s = String(pw ?? "");
+      if(!s) return { score: 0, label:"leer", pct:0, issues:["Leer"] };
+      const issues = [];
+      const len = s.length;
+      const hasLower=/[a-z]/.test(s), hasUpper=/[A-Z]/.test(s), hasDigit=/\\d/.test(s), hasSym=/[^a-zA-Z0-9]/.test(s);
+      const classes=[hasLower,hasUpper,hasDigit,hasSym].filter(Boolean).length;
+
+      if(len < 12) issues.push("Zu kurz (<12)");
+      if(classes < 3) issues.push("Wenig Zeichentypen");
+      if(/(.)\\1\\1/.test(s)) issues.push("Wiederholungen");
+      if(/password|qwerty|1234|admin|letmein/i.test(s)) issues.push("Sehr häufiges Muster");
+
+      let score=0;
+      score += Math.min(40, len*2);
+      score += classes*12;
+      score += hasSym ? 10 : 0;
+      score -= issues.length*8;
+      score = Math.max(0, Math.min(100, score));
+
+      const label = score>=85?"sehr stark":score>=70?"stark":score>=50?"ok":score>=30?"schwach":"sehr schwach";
+      return { score, label, pct:score, issues };
+    }
+    function setMeter(el, pct){ el.style.width = `${Math.max(0, Math.min(100, pct))}%`; }
+
+    // ---------- Generator ----------
+    const AMB = new Set(["O","0","I","l","1","|","`","'","\\",",",".",":",";"]);
+    function buildCharset(){
+      let lower="abcdefghijklmnopqrstuvwxyz";
+      let upper="ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      let digits="0123456789";
+      let symbols="!@#$%^&*()-_=+[]{}<>?/\\\\~";
+      const noAmb = optNoAmb.checked;
+      const filterAmb = (str)=> noAmb ? [...str].filter(ch=>!AMB.has(ch)).join("") : str;
+      lower=filterAmb(lower); upper=filterAmb(upper); digits=filterAmb(digits); symbols=filterAmb(symbols);
+
+      const pools=[];
+      if(optLower.checked) pools.push(lower);
+      if(optUpper.checked) pools.push(upper);
+      if(optDigits.checked) pools.push(digits);
+      if(optSymbols.checked) pools.push(symbols);
+      return { pools, charset: pools.join("") };
+    }
+    function randInt(max){
+      const u = new Uint32Array(1);
+      crypto.getRandomValues(u);
+      return u[0] % max;
+    }
+    function shuffle(arr){
+      for(let i=arr.length-1;i>0;i--){
+        const j = randInt(i+1);
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+    function generatePassword(){
+      const L = Number(len.value);
+      const { pools, charset } = buildCharset();
+      if(pools.length === 0){ toast("Generator","Wähle mindestens einen Zeichentyp.","warn"); return ""; }
+      const out=[];
+      for(const pool of pools) out.push(pool[randInt(pool.length)]);
+      while(out.length < L) out.push(charset[randInt(charset.length)]);
+      shuffle(out);
+      return out.join("");
+    }
+    function estimateEntropy(pw){
+      const s = String(pw ?? "");
+      const hasLower=/[a-z]/.test(s), hasUpper=/[A-Z]/.test(s), hasDigit=/\\d/.test(s), hasSym=/[^a-zA-Z0-9]/.test(s);
+      let pool=0;
+      if(hasLower) pool+=26;
+      if(hasUpper) pool+=26;
+      if(hasDigit) pool+=10;
+      if(hasSym) pool+=28;
+      pool=Math.max(pool,1);
+      return Math.log2(pool) * s.length;
+    }
+    function refreshGenerator(){
+      lenVal.textContent = String(len.value);
+      const pw = generatePassword();
+      if(!pw) return;
+      genOut.value = pw;
+      const sc = scorePassword(pw);
+      setMeter(genMeter, sc.pct);
+      genEntropy.textContent = estimateEntropy(pw).toFixed(1) + " bits";
+      genStats.textContent = `Score: ${sc.score}/100 • ${sc.label}`;
+    }
+
+    // ---------- Clipboard ----------
+    async function copyToClipboard(text, label="Kopiert"){
+      try{
+        await navigator.clipboard.writeText(text);
+        toast("Clipboard", label, "ok");
+        scheduleClipboardClear();
+      }catch{
+        toast("Clipboard","Kopieren blockiert (Browser).","bad");
+      }
+    }
+    function scheduleClipboardClear(){
+      const sec = Number(state.settings.clipClearSeconds || 0);
+      if(state.clipTimer) clearTimeout(state.clipTimer);
+      if(sec <= 0) return;
+      state.clipTimer = setTimeout(async ()=>{
+        try{ await navigator.clipboard.writeText(" "); toast("Clipboard","Auto-Clear versucht.","warn",2200); }catch{}
+      }, sec*1000);
+    }
+
+    // ---------- Auto-lock / activity ----------
+    function bumpActivity(){ state.lastActivity = Date.now(); }
+    function applyAutoLock(){
+      if(state.autoLockTimer) clearInterval(state.autoLockTimer);
+      state.autoLockTimer = setInterval(()=>{
+        if(!state.unlocked) return;
+        const mins = Number(state.settings.autoLockMinutes || 0);
+        if(mins <= 0) return;
+        const idle = Date.now() - state.lastActivity;
+        if(idle > mins*60_000) lockVault("Auto-Lock");
+      }, 2000);
+    }
+    document.addEventListener("visibilitychange", ()=>{
+      if(state.unlocked && state.settings.lockOnHide === 1 && document.hidden){
+        lockVault("Tab versteckt");
+      }
+    });
+
+    // ---------- Vault ops ----------
+    function entries(){ return state.vault?.entries ?? []; }
+
+    async function createVault(){
+      if(!crypto?.subtle){ toast("Crypto","WebCrypto nicht verfügbar.","bad"); return; }
+      const p1 = setupPass1.value, p2 = setupPass2.value;
+      if(p1.length < 8){ toast("Setup","Master-Passwort zu kurz.","bad"); return; }
+      if(p1 !== p2){ toast("Setup","Passwörter stimmen nicht überein.","bad"); return; }
+
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const mode = setupKdfMode.value;
+
+      let kdf;
+      if(mode === "argon2id" && argon2Ready()){
+        kdf = {
+          name: "ARGON2ID",
+          hash: "SHA-256",
+          saltB64: b64FromBytes(salt),
+          time: Number(argonTime.value),
+          memKiB: Number(argonMemMiB.value) * 1024,
+          parallelism: Number(argonPar.value),
+        };
+      }else{
+        if(mode === "argon2id" && !argon2Ready()){
+          toast("Argon2id","Nicht geladen. Fallback: PBKDF2 (oder Argon2 Assets neben die HTML legen).","warn",4500);
+        }
+        kdf = {
+          name: "PBKDF2",
+          hash: "SHA-256",
+          saltB64: b64FromBytes(salt),
+          iterations: Number(setupIterations.value),
+        };
+      }
+
+      const encKey = await deriveEncKey(p1, kdf);
+
+      const vault = newVault();
+      const container = {
+        app: APP,
+        version: VERSION,
+        hint: String(setupHint.value ?? "").slice(0, 140),
+        kdf,
+        blob: { ivB64:"", ctB64:"" },
+        meta: { createdAt: nowIso(), updatedAt: nowIso() }
+      };
+
+      const aad = buildAad(container);
+      const { iv, ct } = await encryptJson(encKey, vault, aad);
+      container.blob.ivB64 = b64FromBytes(iv);
+      container.blob.ctB64 = b64FromBytes(ct);
+      container.meta.updatedAt = nowIso();
+      saveContainer(container);
+
+      setupPass1.value=""; setupPass2.value="";
+      toast("Vault","Erstellt. Jetzt entsperren.","ok");
+      updateAuthUI();
+      unlockPass.focus();
+    }
+
+    async function unlockVault(){
+      const container = loadContainer();
+      if(!container){ toast("Unlock","Kein Vault vorhanden.","warn"); return; }
+
+      updateSecureChip();
+      if(state.settings.blockInsecure === 1 && !isSecureEnough()){
+        toast("Security","Unlock geblockt: Unsicherer Context (kein HTTPS).","bad");
+        return;
+      }
+
+      const now = Date.now();
+      if(now < state.nextUnlockAt){
+        const wait = Math.ceil((state.nextUnlockAt - now)/1000);
+        toast("Unlock",`Backoff aktiv: warte ${wait}s.`,`warn`);
+        return;
+      }
+
+      const pw = unlockPass.value;
+      if(!pw){ toast("Unlock","Passwort fehlt.","warn"); return; }
+
+      try{
+        // Falls Argon2-Vault aber Argon2 fehlt: klare Fehlmeldung
+        if(container.kdf?.name === "ARGON2ID" && !argon2Ready()){
+          toast("Argon2id","Dieser Vault nutzt Argon2id, aber Argon2 ist nicht geladen. Lege argon2-bundled.min.js + argon2.wasm neben die HTML.","bad",6500);
+          return;
+        }
+
+        const encKey = await deriveEncKey(pw, container.kdf);
+        const aad = buildAad(container);
+        const iv = bytesFromB64(container.blob.ivB64);
+        const ct = bytesFromB64(container.blob.ctB64);
+
+        const vault = await decryptJson(encKey, iv, ct, aad);
+        if(!vault || vault.app !== APP || !Array.isArray(vault.entries)) throw new Error("Invalid vault");
+
+        vault.entries = vault.entries.map(normalizeEntry);
+
+        state.encKey = encKey;
+        state.vault = vault;
+        state.unlocked = true;
+        state.selectedId = null;
+        unlockPass.value = "";
+
+        state.failedUnlocks = 0;
+        state.nextUnlockAt = 0;
+        updateBackoffChip();
+
+        bumpActivity();
+        applyAutoLock();
+
+        toast("Vault","Entsperrt.","ok");
+        updateUI();
+        refreshFolders();
+        refreshList();
+        refreshKPIs();
+        selectEntry(null);
+      }catch{
+        state.failedUnlocks++;
+        const delay = Math.min(60, Math.pow(2, Math.min(6, state.failedUnlocks)));
+        state.nextUnlockAt = Date.now() + delay*1000;
+        updateBackoffChip();
+        toast("Unlock","Entsperren fehlgeschlagen (falsches Passwort?).","bad");
+      }
+    }
+
+    function updateBackoffChip(){
+      const now = Date.now();
+      const remain = Math.max(0, state.nextUnlockAt - now);
+      const sec = Math.ceil(remain/1000);
+      backoffChip.className = "chip " + (sec>0 ? "warn" : "");
+      backoffChip.textContent = "Backoff: " + (sec>0 ? `${sec}s` : "–");
+    }
+
+    async function saveVault(reason="Gespeichert"){
+      if(!state.unlocked || !state.encKey || !state.vault) return;
+      try{
+        state.vault.updatedAt = nowIso();
+        const container = loadContainer();
+        if(!container) throw new Error("No container");
+        const aad = buildAad(container);
+
+        const { iv, ct } = await encryptJson(state.encKey, state.vault, aad);
+        container.blob.ivB64 = b64FromBytes(iv);
+        container.blob.ctB64 = b64FromBytes(ct);
+        container.meta.updatedAt = nowIso();
+        saveContainer(container);
+
+        kpiLast.textContent = fmtTime(container.meta.updatedAt);
+        toast("Vault", reason, "ok", 1800);
+      }catch{
+        toast("Vault","Speichern fehlgeschlagen.","bad");
+      }
+    }
+
+    function lockVault(why="Gesperrt"){
+      state.unlocked = false;
+      state.encKey = null;
+
+      try{
+        if(state.vault){
+          for(const e of (state.vault.entries || [])){
+            e.password = "";
+            e.notes = "";
+          }
+        }
+      }catch{}
+      state.vault = null;
+      state.selectedId = null;
+
+      disableDetail(true);
+      refreshList();
+      refreshFolders();
+      refreshKPIs();
+      updateUI();
+      toast("Vault", why, "warn", 2200);
+    }
+
+    function wipeVault(){
+      for(const key of STORAGE_KEYS) localStorage.removeItem(key);
+      lockVault("Vault gelöscht");
+      updateAuthUI();
+      toast("Danger","Vault wurde aus Storage entfernt.","warn",3000);
+    }
+
+    // ---------- Entries ----------
+    function createEntry(){
+      if(!state.unlocked){ toast("Vault","Erst entsperren.","warn"); return; }
+      const e = normalizeEntry({ title:"Neuer Eintrag" });
+      state.vault.entries.unshift(e);
+      state.selectedId = e.id;
+      refreshFolders();
+      refreshList();
+      selectEntry(e.id);
+      bumpActivity();
+      saveVault("Neuer Eintrag gespeichert");
+    }
+
+    function normalizeUrl(url){
+      const u = String(url || "").trim();
+      if(!u) return "";
+      if(/^https?:\\/\\//i.test(u)) return u;
+      return "https://" + u;
+    }
+
+    function updateSelectedFromForm(){
+      if(!state.unlocked || !state.selectedId) return;
+      const e = entries().find(x=>x.id === state.selectedId);
+      if(!e) return;
+
+      e.title = fTitle.value.trim();
+      e.username = fUser.value.trim();
+      e.password = fPass.value;
+      e.url = fUrl.value.trim();
+      e.folder = fFolder.value.trim();
+      e.tags = parseTags(fTags.value);
+      e.notes = fNotes.value;
+      e.updatedAt = nowIso();
+
+      openUrlBtn.style.display = e.url ? "" : "none";
+      if(e.url) openUrlBtn.href = normalizeUrl(e.url);
+      metaInfo.textContent = `erstellt: ${fmtTime(e.createdAt)} • update: ${fmtTime(e.updatedAt)}`;
+      refreshPwUI(e.password);
+      bumpActivity();
+    }
+
+    function selectEntry(id){
+      state.selectedId = id;
+      const e = id ? entries().find(x=>x.id === id) : null;
+
+      if(!state.unlocked || !e){
+        detailSubtitle.textContent = state.unlocked ? "Wähle einen Eintrag oder erstelle einen neuen." : "Gesperrt. Entsperre den Vault.";
+        disableDetail(true);
+        fTitle.value=""; fUser.value=""; fFolder.value=""; fPass.value=""; fUrl.value=""; fTags.value=""; fNotes.value="";
+        openUrlBtn.style.display="none";
+        metaInfo.textContent="–";
+        setMeter(pwMeter, 0);
+        pwHint.textContent="–";
+        return;
+      }
+
+      disableDetail(false);
+      detailSubtitle.textContent = "Bearbeiten, dann Speichern.";
+      fTitle.value=e.title; fUser.value=e.username; fFolder.value=e.folder; fPass.value=e.password;
+      fUrl.value=e.url; fTags.value=(e.tags||[]).join(", "); fNotes.value=e.notes;
+
+      openUrlBtn.style.display = e.url ? "" : "none";
+      if(e.url) openUrlBtn.href = normalizeUrl(e.url);
+
+      favBtn.textContent = e.favorite ? "★ Unfav" : "★ Fav";
+      metaInfo.textContent = `erstellt: ${fmtTime(e.createdAt)} • update: ${fmtTime(e.updatedAt)}`;
+      refreshPwUI(e.password);
+    }
+
+    function disableDetail(disabled){
+      for(const el of [saveBtn, deleteBtn, fTitle, fUser, fFolder, fPass, fUrl, fTags, fNotes, favBtn, pwRevealBtn, pwCopyBtn, pwGenBtn]){
+        el.disabled = disabled;
+      }
+      if(disabled){
+        fPass.type = "password";
+        pwRevealBtn.textContent = "Anzeigen";
+      }
+    }
+
+    function refreshPwUI(pw){
+      const sc = scorePassword(pw);
+      setMeter(pwMeter, sc.pct);
+      pwHint.textContent = sc.issues.length
+        ? `Score ${sc.score}/100 (${sc.label}) • Issues: ${sc.issues.join(", ")}`
+        : `Score ${sc.score}/100 (${sc.label})`;
+    }
+
+    function deleteSelected(){
+      if(!state.unlocked || !state.selectedId) return;
+      const id = state.selectedId;
+      const idx = entries().findIndex(x=>x.id === id);
+      if(idx < 0) return;
+
+      const node = document.createElement("div");
+      node.className = "col";
+      node.style.gap = "12px";
+      const p = document.createElement("div");
+      p.className = "hint";
+      p.textContent = "Eintrag wirklich löschen? Kein Undo. Natürlich nicht.";
+      const row = document.createElement("div");
+      row.className = "row";
+      row.style.justifyContent = "flex-end";
+
+      const cancel = document.createElement("button");
+      cancel.className = "btn";
+      cancel.textContent = "Abbrechen";
+      cancel.onclick = closeModal;
+
+      const del = document.createElement("button");
+      del.className = "btn danger";
+      del.textContent = "Löschen";
+      del.onclick = async ()=>{
+        const removed = entries().splice(idx, 1)[0];
+        closeModal();
+        state.selectedId = null;
+        selectEntry(null);
+        refreshFolders();
+        refreshList();
+        refreshKPIs();
+        await saveVault(`Gelöscht: ${removed.title}`);
+      };
+
+      row.appendChild(cancel); row.appendChild(del);
+      node.appendChild(p); node.appendChild(row);
+      showModal("Löschen", "Bestätigung", node);
+    }
+
+    // ---------- List/filter ----------
+    function filterEntries(){
+      let list = entries().slice();
+      const q = searchInput.value.trim().toLowerCase();
+      const folder = folderFilter.value;
+
+      if(folder) list = list.filter(e => (e.folder||"") === folder);
+      if(state.favFilter) list = list.filter(e => e.favorite);
+
+      if(q){
+        list = list.filter(e => {
+          const hay = [e.title,e.username,e.url,e.notes,(e.tags||[]).join(" "),e.folder].join(" ").toLowerCase();
+          return hay.includes(q);
+        });
+      }
+
+      list.sort((a,b)=>{
+        const af = a.favorite ? 1 : 0;
+        const bf = b.favorite ? 1 : 0;
+        if(af !== bf) return bf - af;
+        return (b.updatedAt||"").localeCompare(a.updatedAt||"");
+      });
+      return list;
+    }
+
+    function makeChip(text, cls=""){
+      const s = document.createElement("span");
+      s.className = "chip" + (cls ? " " + cls : "");
+      s.textContent = text;
+      return s;
+    }
+
+    function refreshList(){
+      entryList.textContent = "";
+
+      if(!state.unlocked){
+        const empty = document.createElement("div");
+        empty.className = "hint";
+        empty.textContent = "Gesperrt. Entsperre den Vault, um Einträge zu sehen.";
+        entryList.appendChild(empty);
+        countChip.textContent = `0 / 0`;
+        return;
+      }
+
+      const list = filterEntries();
+      countChip.textContent = `${list.length} / ${entries().length}`;
+
+      if(list.length === 0){
+        const empty = document.createElement("div");
+        empty.className = "hint";
+        empty.textContent = "Keine Einträge gefunden.";
+        entryList.appendChild(empty);
+        return;
+      }
+
+      for(const e of list){
+        const sc = scorePassword(e.password);
+        const riskCls = sc.score < 30 ? "bad" : sc.score < 50 ? "warn" : "";
+        const riskTxt = sc.score < 30 ? "weak" : sc.score < 50 ? "ok?" : "good";
+
+        const item = document.createElement("div");
+        item.className = "item" + (state.selectedId === e.id ? " selected" : "");
+
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        const title = document.createElement("b");
+        title.textContent = (e.favorite ? "★ " : "") + (e.title || "(ohne Titel)");
+        const sub = document.createElement("div");
+        sub.className = "sub";
+
+        sub.appendChild(makeChip(e.folder || "–"));
+        if(e.username) sub.appendChild(makeChip(e.username));
+        if(e.url) sub.appendChild(makeChip("url", "accent"));
+        sub.appendChild(makeChip(riskTxt, riskCls));
+
+        const tags = (e.tags || []).slice(0,2);
+        for(const t of tags) sub.appendChild(makeChip(t));
+        if((e.tags||[]).length > 2) sub.appendChild(makeChip("+" + ((e.tags||[]).length - 2)));
+
+        meta.appendChild(title);
+        meta.appendChild(sub);
+
+        const actions = document.createElement("div");
+        actions.className = "row";
+        actions.style.gap = "8px";
+
+        const cu = document.createElement("button");
+        cu.className = "btn small";
+        cu.textContent = "User";
+        cu.title = "Benutzername kopieren";
+        cu.disabled = !e.username;
+        cu.onclick = (ev)=>{ ev.stopPropagation(); copyToClipboard(e.username||"", "Benutzername kopiert"); bumpActivity(); };
+
+        const cp = document.createElement("button");
+        cp.className = "btn small";
+        cp.textContent = "Pass";
+        cp.title = "Passwort kopieren";
+        cp.disabled = !e.password;
+        cp.onclick = (ev)=>{ ev.stopPropagation(); copyToClipboard(e.password||"", "Passwort kopiert"); bumpActivity(); };
+
+        actions.appendChild(cu);
+        actions.appendChild(cp);
+
+        item.appendChild(meta);
+        item.appendChild(actions);
+
+        item.onclick = ()=>{
+          selectEntry(e.id);
+          refreshList();
+          bumpActivity();
+        };
+
+        entryList.appendChild(item);
+      }
+    }
+
+    function refreshFolders(){
+      const current = folderFilter.value;
+      folderFilter.textContent = "";
+      const all = document.createElement("option");
+      all.value = ""; all.textContent = "Alle Ordner";
+      folderFilter.appendChild(all);
+
+      if(!state.unlocked) return;
+
+      const set = new Set(entries().map(e => (e.folder||"").trim()).filter(Boolean));
+      const folders = [...set].sort((a,b)=>a.localeCompare(b, undefined, {sensitivity:"base"}));
+      for(const f of folders){
+        const opt = document.createElement("option");
+        opt.value = f;
+        opt.textContent = f;
+        folderFilter.appendChild(opt);
+      }
+      if([...folderFilter.options].some(o=>o.value === current)) folderFilter.value = current;
+    }
+
+    // ---------- KPIs / status ----------
+    function computeHealth(){
+      const list = entries();
+      if(list.length === 0) return { label:"leer", pct:0 };
+      let good=0;
+      for(const e of list){
+        if(scorePassword(e.password).score >= 70) good++;
+      }
+      const pct = Math.round((good / list.length) * 100);
+      const label = pct>=80 ? `${pct}% gut` : pct>=50 ? `${pct}% ok` : `${pct}% kritisch`;
+      return { label, pct };
+    }
+
+    async function computeBuildId(){
+      try{
+        const script = document.querySelector('script[type="module"]')?.textContent ?? "";
+        const hash = await crypto.subtle.digest("SHA-256", enc.encode(script));
+        const b = new Uint8Array(hash);
+        const hex = [...b].slice(0,6).map(x=>x.toString(16).padStart(2,"0")).join("");
+        state.buildId = hex;
+      }catch{
+        state.buildId = "n/a";
+      }
+      buildChip.textContent = "Build: " + state.buildId;
+    }
+
+    function refreshKPIs(){
+      kpiEntries.textContent = String(state.vault?.entries?.length ?? 0);
+      kpiHealth.textContent = state.unlocked ? computeHealth().label : "–";
+      kpiLast.textContent = state.unlocked ? fmtTime(state.vault?.updatedAt) : "–";
+
+      const hasVault = !!loadContainer();
+      if(!hasVault){
+        statusDot.className = "dot warn";
+        statusText.innerHTML = "<b>Kein Vault</b>";
+      }else if(state.unlocked){
+        statusDot.className = "dot ok";
+        statusText.innerHTML = "<b>Entsperrt</b>";
+      }else{
+        statusDot.className = "dot bad";
+        statusText.innerHTML = "<b>Gesperrt</b>";
+      }
+
+      lockChip.textContent = hasVault ? (state.unlocked ? "Entsperrt" : "Gesperrt") : "Kein Vault";
+    }
+
+    function updateSecureChip(){
+      const ok = isSecureEnough();
+      secureChip.className = "chip " + (ok ? "accent" : "warn");
+      secureChip.textContent = "Secure: " + (ok ? "YES" : "NO");
+
+      const c = loadContainer();
+      const kdfName = c?.kdf?.name || "–";
+      kdfChip.className = "chip " + (kdfName==="ARGON2ID" ? "accent" : "warn");
+      kdfChip.textContent = "KDF: " + (kdfName==="ARGON2ID" ? "Argon2id" : kdfName==="PBKDF2" ? "PBKDF2" : "–");
+
+      unlockWarn.textContent = ok
+        ? "–"
+        : "Warnung: Unsicherer Context (kein HTTPS). Hosting bitte nur über TLS. Sonst kannst du dir gleich selbst die Schlüssel schicken.";
+    }
+
+    function updateSetupKdfUi(){
+      const mode = setupKdfMode.value;
+      const ready = argon2Ready();
+      argonBox.style.display = (mode==="argon2id") ? "" : "none";
+      pbkdf2Box.style.display = (mode==="pbkdf2") ? "" : "none";
+
+      argonReadyChip.className = "chip " + (ready ? "accent" : "warn");
+      argonReadyChip.textContent = "Argon2: " + (ready ? "READY" : "MISSING");
+      argonWarn.textContent = ready
+        ? "–"
+        : "Argon2 nicht geladen. Lege argon2-bundled.min.js + argon2.wasm neben die HTML, sonst fällt Veyl auf PBKDF2 zurück.";
+    }
+
+    function updateHostingStatus(){
+      const secure = isSecureEnough();
+      const proto = location.protocol;
+      hostChip.textContent = `Host: ${location.host || "(file)"}`;
+      ctxChip.className = "chip " + (secure ? "accent" : "warn");
+      ctxChip.textContent = `HTTPS: ${proto==="https:" ? "YES" : proto==="file:" ? "FILE" : "NO"}`;
+
+      const aok = argon2Ready();
+      argonChip.className = "chip " + (aok ? "accent" : "warn");
+      argonChip.textContent = `Argon2: ${aok ? "READY" : "MISSING"}`;
+
+      isoChip.className = "chip " + (window.crossOriginIsolated ? "accent" : "");
+      isoChip.textContent = `Isolation: ${window.crossOriginIsolated ? "YES" : "NO"}`;
+
+      hostHint.textContent =
+        secure
+          ? "HTTPS erkannt. Für öffentliches Hosting: setz HSTS + CSP + Frame-ancestors + nosniff + Permissions-Policy."
+          : "Kein HTTPS. Für öffentliches Hosting ist das ein No-Go. Unlock kann (je nach Setting) geblockt werden.";
+    }
+
+    // ---------- Tabs ----------
+    function showTab(name){
+      tabVault.style.display = name==="vault" ? "" : "none";
+      tabGen.style.display = name==="generator" ? "" : "none";
+      tabAudit.style.display = name==="audit" ? "" : "none";
+      tabSettings.style.display = name==="settings" ? "" : "none";
+      [...tabs.querySelectorAll(".tab")].forEach(t=>t.classList.toggle("active", t.dataset.tab === name));
+      bumpActivity();
+    }
+
+    function setTabEnabled(tabName, enabled){
+      const el = tabs.querySelector(`.tab[data-tab="${tabName}"]`);
+      if(!el) return;
+      el.classList.toggle("disabled", !enabled);
+    }
+
+    // ---------- Audit ----------
+    function runAudit(){
+      if(!state.unlocked){ toast("Audit","Erst entsperren.","warn"); return; }
+      const list = entries();
+      const issues = [];
+
+      const weak = [];
+      for(const e of list){
+        const sc = scorePassword(e.password);
+        if(sc.score < 50) weak.push({e, sc});
+      }
+
+      const mapPw = new Map();
+      for(const e of list){
+        const pw = e.password || "";
+        if(!pw) continue;
+        mapPw.set(pw, (mapPw.get(pw)||[]).concat(e));
+      }
+      const reused = [...mapPw.entries()].filter(([pw,arr])=>arr.length>1);
+
+      const mapDup = new Map();
+      for(const e of list){
+        const k = `${(e.title||"").trim().toLowerCase()}|${(e.username||"").trim().toLowerCase()}|${(e.url||"").trim().toLowerCase()}`;
+        mapDup.set(k, (mapDup.get(k)||[]).concat(e));
+      }
+      const dup = [...mapDup.values()].filter(arr=>arr.length>1);
+
+      auditWeak.textContent = String(weak.length);
+      auditReuse.textContent = String(reused.length);
+      auditDup.textContent = String(dup.length);
+
+      for(const {e, sc} of weak){
+        issues.push({ kind:"bad", title:"Weak Password", sub:`${e.title} • Score ${sc.score}/100 • ${sc.issues.join(", ")||"–"}`, id:e.id });
+      }
+      for(const [pw, arr] of reused){
+        issues.push({ kind:"warn", title:"Passwort wiederverwendet", sub:`${arr.length} Einträge: ${arr.map(x=>x.title).join(", ")}`, id:arr[0]?.id });
+      }
+      for(const arr of dup){
+        issues.push({ kind:"warn", title:"Duplikat", sub:`${arr.length}x: ${arr.map(x=>x.title).join(", ")}`, id:arr[0]?.id });
+      }
+
+      auditList.textContent = "";
+      if(issues.length === 0){
+        const el = document.createElement("div");
+        el.className = "hint";
+        el.textContent = "Keine offensichtlichen Probleme gefunden.";
+        auditList.appendChild(el);
+        return;
+      }
+
+      for(const it of issues){
+        const el = document.createElement("div");
+        el.className = "item";
+        const meta = document.createElement("div"); meta.className="meta";
+        const b = document.createElement("b"); b.textContent = it.title;
+        const sub = document.createElement("div"); sub.className="sub";
+        sub.appendChild(makeChip(it.kind, it.kind==="bad"?"bad":"warn"));
+        sub.appendChild(makeChip(it.sub));
+        meta.appendChild(b); meta.appendChild(sub);
+
+        const act = document.createElement("div"); act.className="row";
+        const btn = document.createElement("button"); btn.className="btn small"; btn.textContent="Öffnen";
+        btn.onclick = ()=>{ showTab("vault"); selectEntry(it.id); refreshList(); };
+        act.appendChild(btn);
+
+        el.appendChild(meta); el.appendChild(act);
+        auditList.appendChild(el);
+      }
+    }
+
+    // ---------- Import/Export ----------
+    function downloadText(filename, text){
+      const blob = new Blob([text], { type:"application/json;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(a.href);
+    }
+
+    function exportEncrypted(){
+      const c = loadContainer();
+      if(!c){ toast("Export","Kein Vault vorhanden.","warn"); return; }
+      const file = `veyl-export-encrypted-${new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")}.veyl.json`;
+      downloadText(file, JSON.stringify(c, null, 2));
+      toast("Export","Verschlüsselter Export erstellt.","ok");
+    }
+
+    function exportDecrypted(){
+      if(!state.unlocked){ toast("Export","Nur nach Unlock.","warn"); return; }
+      const file = `veyl-export-decrypted-${new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")}.json`;
+      downloadText(file, JSON.stringify(state.vault, null, 2));
+      toast("Export","Entschlüsselter Export erstellt.","warn",2600);
+    }
+
+    function pickFile(cb){
+      filePick.value = "";
+      filePick.onchange = async ()=>{
+        const f = filePick.files?.[0];
+        if(!f) return;
+        cb(await f.text(), f.name);
+      };
+      filePick.click();
+    }
+
+    function importEncrypted(){
+      pickFile((text,name)=>{
+        try{
+          const obj = JSON.parse(text);
+          if(obj?.app !== APP || !obj?.kdf?.saltB64 || !obj?.blob?.ctB64){
+            toast("Import","Sieht nicht nach Veyl (encrypted) aus.","bad"); return;
+          }
+          saveContainer(obj);
+          lockVault("Importiert (gesperrt)");
+          updateAuthUI();
+          toast("Import",`Importiert: ${name}`,"ok");
+        }catch{ toast("Import","Import fehlgeschlagen (JSON?).","bad"); }
+      });
+    }
+
+    function importDecrypted(){
+      pickFile(async (text,name)=>{
+        try{
+          const obj = JSON.parse(text);
+          if(!obj || obj.app !== APP || !Array.isArray(obj.entries)){
+            toast("Import","Sieht nicht nach Veyl (decrypted) aus.","bad"); return;
+          }
+          if(!state.unlocked){
+            toast("Import","Decrypted Import braucht Unlock (Key existiert).","warn"); return;
+          }
+          obj.entries = obj.entries.map(normalizeEntry);
+          state.vault = { ...newVault(), ...obj, updatedAt: nowIso() };
+          await saveVault("Decrypted Import gespeichert");
+          refreshFolders(); refreshList(); refreshKPIs();
+          toast("Import",`Decrypted importiert: ${name}`,"warn",2600);
+        }catch{ toast("Import","Import fehlgeschlagen (JSON?).","bad"); }
+      });
+    }
+
+    // ---------- Auth UI ----------
+    function updateAuthUI(){
+      const c = loadContainer();
+      if(c){
+        setupBox.style.display = "none";
+        unlockBox.style.display = "";
+        unlockHintText.textContent = c.hint ? `Hinweis: ${c.hint}` : "Hinweis: –";
+      }else{
+        setupBox.style.display = "";
+        unlockBox.style.display = "none";
+      }
+      updateSecureChip();
+      updateSetupKdfUi();
+      updateUI();
+      refreshKPIs();
+      refreshList();
+      updateHostingStatus();
+    }
+
+    function updateUI(){
+      const hasVault = !!loadContainer();
+      newEntryBtn.disabled = !state.unlocked;
+      lockBtn.disabled = !hasVault;
+
+      // Tab logic: Audit nur unlocked, Settings immer, Generator immer
+      setTabEnabled("vault", true);
+      setTabEnabled("generator", true);
+      setTabEnabled("settings", true);
+      setTabEnabled("audit", state.unlocked);
+
+      leftSubtitle.textContent = hasVault
+        ? (state.unlocked ? "Verwalten, exportieren, auditieren. Und bitte HTTPS benutzen." : "Entsperre den Vault.")
+        : "Erstelle einen Vault, um zu starten.";
+
+      autoLockMinutes.value = String(state.settings.autoLockMinutes ?? 5);
+      clipClearSeconds.value = String(state.settings.clipClearSeconds ?? 20);
+      lockOnHide.value = String(state.settings.lockOnHide ?? 1);
+      blockInsecure.value = String(state.settings.blockInsecure ?? 1);
+
+      updateSecureChip();
+      updateHostingStatus();
+    }
+
+    // ---------- Argon calibration ----------
+    async function calibrateKdf(){
+      const pw = setupPass1.value;
+      if(!pw){ toast("KDF Auto","Bitte Master-Passwort-Feld befüllen (nur für Timing).","warn"); return; }
+
+      if(setupKdfMode.value !== "argon2id"){
+        // PBKDF2 quick calibration
+        const salt = crypto.getRandomValues(new Uint8Array(16));
+        let iter = 250000;
+        const targetMs = 320;
+
+        for(let i=0;i<3;i++){
+          const t0 = performance.now();
+          await pbkdf2Bits(pw, salt, iter, 256);
+          const ms = performance.now() - t0;
+          const factor = targetMs / Math.max(1, ms);
+          iter = Math.round(iter * factor);
+          iter = Math.max(150000, Math.min(1200000, iter));
+        }
+
+        setupIterations.value = String(iter);
+        toast("PBKDF2 Auto",`Kalibriert: ${iter.toLocaleString()} Iterationen (Ziel ~${targetMs}ms).`,"ok",2600);
+        return;
+      }
+
+      if(!argon2Ready()){
+        toast("Argon2 Auto","Argon2 nicht geladen. Assets neben die HTML legen.","bad",4500);
+        return;
+      }
+
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const targetMs = 360;
+      const memKiB = Number(argonMemMiB.value) * 1024;
+      const p = Number(argonPar.value);
+      let t = Number(argonTime.value);
+
+      for(let i=0;i<2;i++){
+        const t0 = performance.now();
+        await argon2idBytes(pw, salt, t, memKiB, p, 32);
+        const ms = performance.now() - t0;
+        if(ms < targetMs*0.7) t = Math.min(6, t+1);
+        else if(ms > targetMs*1.4) t = Math.max(1, t-1);
+      }
+
+      // clamp to our UI options 2-4
+      t = Math.max(2, Math.min(4, t));
+      argonTime.value = String(t);
+      toast("Argon2 Auto",`Kalibriert: time-cost ${t} (Memory ${argonMemMiB.value}MiB, Ziel ~${targetMs}ms).`,"ok",2800);
+    }
+
+    // ---------- Events ----------
+    createVaultBtn.onclick = createVault;
+    calibrateBtn.onclick = calibrateKdf;
+
+    unlockBtn.onclick = unlockVault;
+    unlockPass.addEventListener("keydown",(e)=>{
+      if(e.key==="Enter" && (e.ctrlKey||e.metaKey)) unlockVault();
+    });
+
+    showHintBtn.onclick = ()=>{
+      const c = loadContainer();
+      toast("Hinweis", c?.hint ? c.hint : "–", "info", 3200);
+    };
+
+    exportEncryptedBtn.onclick = exportEncrypted;
+
+    lockBtn.onclick = ()=> lockVault("Manuell gesperrt");
+    newEntryBtn.onclick = createEntry;
+
+    saveBtn.onclick = async ()=>{ updateSelectedFromForm(); await saveVault("Gespeichert"); };
+    deleteBtn.onclick = deleteSelected;
+
+    for(const el of [fTitle,fUser,fFolder,fPass,fUrl,fTags,fNotes]){
+      el.addEventListener("input", ()=>{
+        if(!state.unlocked) return;
+        updateSelectedFromForm();
+      });
+    }
+
+    favBtn.onclick = async ()=>{
+      if(!state.unlocked || !state.selectedId) return;
+      const e = entries().find(x=>x.id===state.selectedId);
+      if(!e) return;
+      e.favorite = !e.favorite;
+      e.updatedAt = nowIso();
+      favBtn.textContent = e.favorite ? "★ Unfav" : "★ Fav";
+      refreshList(); refreshKPIs();
+      await saveVault("Favorit geändert");
+    };
+
+    pwRevealBtn.onclick = ()=>{
+      if(fPass.disabled) return;
+      const reveal = fPass.type === "password";
+      fPass.type = reveal ? "text" : "password";
+      pwRevealBtn.textContent = reveal ? "Verstecken" : "Anzeigen";
+      bumpActivity();
+    };
+    pwCopyBtn.onclick = ()=>{ if(!fPass.disabled) copyToClipboard(fPass.value,"Passwort kopiert"); bumpActivity(); };
+    pwGenBtn.onclick = ()=>{
+      if(fPass.disabled) return;
+      const pw = generatePassword() || "";
+      fPass.value = pw;
+      updateSelectedFromForm();
+      toast("Generator","Passwort in Feld gesetzt.","ok",1800);
+      bumpActivity();
+    };
+
+    searchInput.addEventListener("input", refreshList);
+    folderFilter.onchange = refreshList;
+    toggleFavFilter.onclick = ()=>{
+      state.favFilter = !state.favFilter;
+      toggleFavFilter.classList.toggle("primary", state.favFilter);
+      refreshList();
+      bumpActivity();
+    };
+
+    tabs.addEventListener("click",(e)=>{
+      const t = e.target.closest(".tab");
+      if(!t || t.classList.contains("disabled")) return;
+      showTab(t.dataset.tab);
+    });
+
+    // generator bindings
+    len.oninput = ()=>{ lenVal.textContent = String(len.value); };
+    for(const el of [len,optLower,optUpper,optDigits,optSymbols,optNoAmb]) el.addEventListener("change", refreshGenerator);
+    genNewBtn.onclick = refreshGenerator;
+    genCopyBtn.onclick = ()=>copyToClipboard(genOut.value,"Generator-Passwort kopiert");
+
+    runAuditBtn.onclick = runAudit;
+
+    // settings bindings
+    autoLockMinutes.onchange = ()=>{ state.settings.autoLockMinutes = Number(autoLockMinutes.value); saveSettings(); applyAutoLock(); toast("Settings","Auto-Lock aktualisiert.","ok",1800); };
+    clipClearSeconds.onchange = ()=>{ state.settings.clipClearSeconds = Number(clipClearSeconds.value); saveSettings(); toast("Settings","Clipboard-Timeout aktualisiert.","ok",1800); };
+    lockOnHide.onchange = ()=>{ state.settings.lockOnHide = Number(lockOnHide.value); saveSettings(); toast("Settings","Lock-on-hide aktualisiert.","ok",1800); };
+    blockInsecure.onchange = ()=>{ state.settings.blockInsecure = Number(blockInsecure.value); saveSettings(); updateSecureChip(); toast("Settings","Insecure-Policy aktualisiert.","ok",1800); };
+
+    settingsExportEncrypted.onclick = exportEncrypted;
+    settingsExportDecrypted.onclick = exportDecrypted;
+    settingsImport.onclick = importEncrypted;
+    settingsImportDecrypted.onclick = importDecrypted;
+
+    importBtn.onclick = importEncrypted;
+    exportBtn.onclick = exportEncrypted;
+
+    wipeBtn.onclick = ()=>{
+      const node = document.createElement("div");
+      node.className = "col";
+      node.style.gap = "12px";
+
+      const info = document.createElement("div");
+      info.className = "hint";
+      info.textContent = "Das löscht den Vault aus Storage. Kein Undo. Wenn du keinen Export hast, ist das Game Over.";
+
+      const row = document.createElement("div");
+      row.className = "row";
+      row.style.justifyContent = "flex-end";
+
+      const cancel = document.createElement("button");
+      cancel.className = "btn";
+      cancel.textContent = "Abbrechen";
+      cancel.onclick = closeModal;
+
+      const wipe = document.createElement("button");
+      wipe.className = "btn danger";
+      wipe.textContent = "Löschen";
+      wipe.onclick = ()=>{ closeModal(); wipeVault(); };
+
+      row.appendChild(cancel);
+      row.appendChild(wipe);
+      node.appendChild(info);
+      node.appendChild(row);
+      showModal("Vault löschen","Bestätigung",node);
+    };
+
+    setupKdfMode.onchange = ()=>{
+      updateSetupKdfUi();
+      bumpActivity();
+    };
+
+    // shortcuts
+    window.addEventListener("keydown",(e)=>{
+      if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==="k"){ e.preventDefault(); showTab("vault"); searchInput.focus(); }
+      if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==="n"){ e.preventDefault(); createEntry(); }
+      if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==="l"){ e.preventDefault(); if(state.unlocked) lockVault("Shortcut Lock"); }
+    });
+    for(const evt of ["mousemove","mousedown","keydown","touchstart","scroll"]) window.addEventListener(evt, bumpActivity, { passive:true });
+
+    setupPass1.addEventListener("input", ()=>{
+      const sc = scorePassword(setupPass1.value);
+      setMeter(setupPassMeter, sc.pct);
+    });
+
+    // status pill modal
+    statusPill.onclick = ()=>{
+      const node = document.createElement("div");
+      node.className = "col";
+      node.style.gap = "10px";
+
+      const p1 = document.createElement("div"); p1.className="hint";
+      const c = loadContainer();
+      const k = c?.kdf?.name || "–";
+      p1.textContent = `Build: ${state.buildId} • SecureContext: ${window.isSecureContext ? "YES" : "NO"} • HTTPS: ${location.protocol==="https:" ? "YES" : "NO"} • Argon2: ${argon2Ready() ? "READY" : "MISSING"} • Vault-KDF: ${k}`;
+      node.appendChild(p1);
+
+      const p2 = document.createElement("div"); p2.className="hint";
+      p2.textContent = "Öffentlich hosten ist okay, aber: wenn dein Server kompromittiert wird, kann er dir bösartigen Code ausliefern. Security Header helfen, ersetzen aber kein sauberes Deployment.";
+      node.appendChild(p2);
+
+      showModal("Security / Build", "Quick Status", node);
+    };
+
+    copyNginxBtn.onclick = ()=>{
+      const snippet =
+`# /etc/nginx/sites-available/veyl
+server {
+  listen 443 ssl http2;
+  server_name example.com;
+
+  root /var/www/veyl;
+  index index.html;
+
+  # TLS (certs etc.) hier
+
+  add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+  add_header X-Content-Type-Options "nosniff" always;
+  add_header Referrer-Policy "no-referrer" always;
+  add_header Permissions-Policy "clipboard-read=(self), clipboard-write=(self), camera=(), microphone=(), geolocation=()" always;
+  add_header X-Frame-Options "DENY" always;
+
+  # CSP (praktisch für Single-File): inline erlaubt + wasm erlaubt
+  add_header Content-Security-Policy "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'none'; img-src 'self' data:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; connect-src 'self'; upgrade-insecure-requests; block-all-mixed-content" always;
+
+  # HTML nicht cachen (optional)
+  location = /index.html { add_header Cache-Control "no-store" always; }
+
+  # WASM/JS dürfen lang cachen (optional)
+  location ~* \\.(wasm|js)$ { add_header Cache-Control "public, max-age=31536000, immutable" always; }
+}`;
+      copyToClipboard(snippet, "Nginx Snippet kopiert");
+    };
+
+    // init
+    async function init(){
+      if(!crypto?.subtle){
+        toast("Crypto","WebCrypto nicht verfügbar. Ohne das: kein Vault.","bad",6000);
+      }
+      await computeBuildId();
+      refreshGenerator();
+      showTab("vault");
+      disableDetail(true);
+      applyAutoLock();
+      updateAuthUI();
+
+      const c = loadContainer();
+      if(c) unlockPass.focus();
+      else setupPass1.focus();
+    }
+    init();
+  </script>
+</body>
+</html>
