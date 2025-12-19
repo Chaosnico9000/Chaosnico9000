@@ -1,3 +1,15 @@
+NØNE als Name
+
+CRUX
+
+NULL
+
+FRAY
+
+PRX
+
+BARE
+
 1. High Concept
 
 VAREK ist ein kompromissloses Survival-Spiel in einer leeren, post-zivilisatorischen Welt, in der Zeit, Hunger, Kälte und Fehlentscheidungen gefährlicher sind als Gegner.
