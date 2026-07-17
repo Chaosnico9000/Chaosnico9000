@@ -1,254 +1,131 @@
 <div align="center">
 
-  <h1>👋 Hi, ich bin Nico</h1>
-  <h3>Anwendungsentwickler • Fullstack Engineer • Infrastruktur &amp; DevOps Enthusiast</h3>
+# Hi, I'm Nico 👋
 
-  <p>
-    <img src="https://komarev.com/ghpvc/?username=Chaosnico9000&style=flat-square" alt="Profilaufrufe" />
-  </p>
+### Software Engineer · .NET &amp; TypeScript · Germany
 
-  <p>
-    <kbd>.NET</kbd>
-    <kbd>Blazor</kbd>
-    <kbd>WPF</kbd>
-    <kbd>SQL Server</kbd>
-    <kbd>GitHub Actions</kbd>
-    <kbd>Windows Services</kbd>
-    <kbd>Minecraft &amp; Modding</kbd>
-  </p>
+<p>
+  <a href="https://chaosnico9000.github.io/"><img src="https://img.shields.io/badge/Portfolio-6366f1?style=for-the-badge&logo=githubpages&logoColor=white" alt="Portfolio" /></a>
+  <a href="https://de.linkedin.com/in/nico-hinken-58642732a"><img src="https://img.shields.io/badge/LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white" alt="LinkedIn" /></a>
+  <a href="mailto:nicohinken@gmail.com"><img src="https://img.shields.io/badge/Email-EA4335?style=for-the-badge&logo=gmail&logoColor=white" alt="Email" /></a>
+  <img src="https://komarev.com/ghpvc/?username=Chaosnico9000&style=for-the-badge&color=6366f1&label=Profile+Views" alt="Profile views" />
+</p>
 
 </div>
 
 ---
 
-## 🚀 Über mich
+## 🚀 About
 
-Ich bin Nico, Anwendungsentwickler und gelegentlicher Chaos-Verursacher im .NET-Universum.  
-Was als „Ich lerne mal programmieren“ angefangen hat, ist inzwischen in ein kleines Software-Ökosystem eskaliert:
+I'm a software engineer at **LIST AG**, based in Germany. I started out building small, dependable **.NET / C#** command-line tools — for chaos testing, benchmarking, file monitoring and automation — and I'm increasingly working full-stack with **TypeScript**, design systems and **Python / LLM** integrations.
 
-- Blazor-Frontends  
-- WPF-UIs  
-- Windows-Dienste  
-- DevOps-Pipelines  
-- Analytics &amp; Monitoring  
-- BizTalk-Monitoring  
-- Discord-Bots
+I like software that's lightweight, cross-platform, and does exactly what it promises. Most of my tools ship as open source under the MIT license.
 
-Nebenbei betreibe ich Minecraft-Server mit zu vielen Mods, baue Machine-Learning-Experimente, schraube Roblox-Projekte zusammen  
-und entwickle Tools, die vermutlich nur ich wirklich verstehe – aber die trotzdem ihren Job machen.
-
-> Wenn es Code ist, habe ich es mindestens einmal zerlegt, einmal wiederbelebt  
-> und am Ende so verbessert, dass ich mich frage, wie es überhaupt vorher funktionieren konnte.
+- 🔭 Currently building **MainFrameHub** — a modular multi-game community platform (Next.js · Hono · Bun)
+- 🧠 Experimenting with **FRAME** — a small language-model series built from scratch in Python
+- 🧰 Always shipping small, focused **.NET** developer tools
+- 📫 Reach me via [LinkedIn](https://de.linkedin.com/in/nico-hinken-58642732a) or [email](mailto:nicohinken@gmail.com)
 
 ---
 
-## 🚀 Aktuelle Projekte
+## 🧰 Tech Stack
 
-<div align="center">
+**Languages**
+
+![C#](https://img.shields.io/badge/C%23-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![C](https://img.shields.io/badge/C-A8B9CC?style=for-the-badge&logo=c&logoColor=black)
+![SQL](https://img.shields.io/badge/SQL-4479A1?style=for-the-badge&logo=postgresql&logoColor=white)
+
+**Frameworks &amp; Runtimes**
+
+![.NET](https://img.shields.io/badge/.NET-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)
+![ASP.NET Core](https://img.shields.io/badge/ASP.NET%20Core-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)
+![.NET MAUI](https://img.shields.io/badge/.NET%20MAUI-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)
+![Bun](https://img.shields.io/badge/Bun-000000?style=for-the-badge&logo=bun&logoColor=white)
+![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
+
+**Data, DevOps &amp; Tooling**
+
+![SQLite](https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white)
+![Drizzle](https://img.shields.io/badge/Drizzle-C5F74F?style=for-the-badge&logo=drizzle&logoColor=black)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white)
+![Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)
+![PowerShell](https://img.shields.io/badge/PowerShell-5391FE?style=for-the-badge&logo=powershell&logoColor=white)
+![Git](https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white)
+
+---
+
+## 🛠️ Selected Work
 
 <table>
   <tr>
     <td width="50%" valign="top">
-      <h3>Infanterieregiment 9 Ecosystem</h3>
-      <ul>
-        <li>Blazor Server Frontend (MudBlazor, Razor Components)</li>
-        <li>Core Backend (EF Core, SQL Server, Serilog)</li>
-        <li>Discord Bot (DSharpPlus)</li>
-        <li>Windows Services für Orchestrierung, Deployments &amp; Monitoring</li>
-        <li>GitHub Actions CI/CD mit selbst gehosteten Windows Runnern</li>
-      </ul>
-      <p>
-        Eine vollständige Architektur aus UI, API, Hintergrunddiensten, Analytics  
-        und automatisierten Deployments.
-      </p>
+      <h3>MainFrameHub 🔒</h3>
+      <p>A modular multi-game community platform for tactical gaming groups. A fully containerized Bun-workspace monorepo: Next.js 15 web app, Hono API, Drizzle ORM and a Discord bot.</p>
+      <p><code>Next.js 15</code> <code>Hono</code> <code>Bun</code> <code>Drizzle</code> <code>Docker</code></p>
     </td>
     <td width="50%" valign="top">
-      <h3>BizTalkMonitoring</h3>
-      <ul>
-        <li>Hochfrequente Hintergrundprozesse</li>
-        <li>Day-Analysis Engine (Median, MAD, Theil-Sen, CUSUM, Winsorization)</li>
-        <li>Interaktive Dashboards, Diagramme &amp; Drill-Down-Ansichten</li>
-        <li>Domain Driven Design</li>
-        <li>Persistente historische Daten &amp; API-Schicht</li>
-      </ul>
-      <p>
-        Fokus auf Monitoring, Ausreißererkennung und Langzeit-Analyse.
-      </p>
+      <h3><a href="https://chaosnico9000.github.io/MainFrameHub-DesignSystem/">MainFrame Design System</a> 🔒</h3>
+      <p>A reusable React component library on Base UI, CVA and Tailwind v4 with OKLCh design tokens and light/dark theming — published to GitHub Packages with live docs.</p>
+      <p><code>React 19</code> <code>TypeScript</code> <code>Tailwind v4</code> <code>Base UI</code></p>
     </td>
   </tr>
-</table>
-
-<table>
   <tr>
     <td width="50%" valign="top">
-      <h3>Craftify (Create Modpack)</h3>
-      <ul>
-        <li>Create-basiertes Modpack mit vielen QoL-Verbesserungen</li>
-        <li>Performance-Tuning (ZGC, Konfigs, Datapacks)</li>
-        <li>Stabiler Serverbetrieb &amp; Dokumentation</li>
-      </ul>
+      <h3>FRAME 🔒</h3>
+      <p>A large language model series built from scratch (Spin · Ferrite · Dynamo): custom tokenizers, training pipeline and chat — from a CPU-friendly ~7M model to larger GPU models.</p>
+      <p><code>Python</code> <code>LLM</code> <code>Tokenizers</code></p>
     </td>
     <td width="50%" valign="top">
-      <h3>Weitere Spielplätze</h3>
-      <ul>
-        <li>Unity 2D Lern- &amp; Prototyp-Projekte</li>
-        <li>Roblox Lua Scripting</li>
-        <li>Interne Tools &amp; Automatisierungen</li>
-      </ul>
+      <h3><a href="https://github.com/Chaosnico9000/VERA">VERA</a></h3>
+      <p>A cross-platform time-tracking app (Android / iOS / macOS) built with .NET MAUI and an ASP.NET Core 10 backend — gamification, biometric auth and JWT refresh rotation.</p>
+      <p><code>.NET MAUI</code> <code>ASP.NET Core</code> <code>SQLite</code> <code>JWT</code></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <h3><a href="https://github.com/Chaosnico9000/ChaosCLI">ChaosCLI</a> ⭐</h3>
+      <p>A lightweight, cross-platform chaos-engineering CLI — simulate timeouts, CPU load, memory pressure, I/O stress and custom exit codes to validate how systems handle failure.</p>
+      <p><code>C#</code> <code>.NET</code> <code>Chaos Engineering</code></p>
+    </td>
+    <td width="50%" valign="top">
+      <h3>Quick 🔒</h3>
+      <p>A local clone of Shopify Quick: drop a folder and get an instantly hosted URL. Supports static sites and auto-built React apps via a small control-plane and CLI.</p>
+      <p><code>Bun</code> <code>TypeScript</code> <code>React</code></p>
     </td>
   </tr>
 </table>
 
-</div>
+> 🔒 = private repository · See more on my **[portfolio](https://chaosnico9000.github.io/)**
 
 ---
 
-## 🧠 Skills &amp; Tech Stack
+## 📊 GitHub Stats
 
 <div align="center">
 
-<table>
-  <tr>
-    <th>Backend</th>
-    <th>Frontend</th>
-    <th>DevOps &amp; Infrastruktur</th>
-    <th>Sonstiges</th>
-  </tr>
-  <tr>
-    <td valign="top">
-      <ul>
-        <li>C#, .NET 6–10</li>
-        <li>EF Core, LINQ</li>
-        <li>SQL Server, Query-Optimierung</li>
-        <li>Windows Services</li>
-        <li>Serilog &amp; strukturiertes Logging</li>
-        <li>REST APIs, Clean Architecture</li>
-      </ul>
-    </td>
-    <td valign="top">
-      <ul>
-        <li>Blazor Server</li>
-        <li>MudBlazor</li>
-        <li>Razor Components</li>
-        <li>WPF (Material Design 3)</li>
-      </ul>
-    </td>
-    <td valign="top">
-      <ul>
-        <li>GitHub Actions CI/CD (Windows &amp; Linux)</li>
-        <li>Selbst gehostete Windows Runner</li>
-        <li>PowerShell-Deployment-Skripte</li>
-        <li>Docker, Wings, Pelican Panel</li>
-        <li>Caddy Reverse Proxy</li>
-        <li>Windows &amp; Linux Serververwaltung</li>
-      </ul>
-    </td>
-    <td valign="top">
-      <ul>
-        <li>Unity 2D</li>
-        <li>Roblox Lua</li>
-        <li>Statistik &amp; Anomalieerkennung</li>
-        <li>Minecraft-Server-Optimierung</li>
-      </ul>
-    </td>
-  </tr>
-</table>
+<img src="https://github-profile-summary-cards.vercel.app/api/cards/stats?username=Chaosnico9000&theme=tokyonight" alt="GitHub stats" height="185" />
+<img src="https://github-profile-summary-cards.vercel.app/api/cards/repos-per-language?username=Chaosnico9000&theme=tokyonight" alt="Repos per language" height="185" />
+
+<br /><br />
+
+<img src="https://streak-stats.demolab.com/?user=Chaosnico9000&theme=tokyonight&hide_border=true&date_format=j.%20M%5B%20Y%5D" alt="GitHub streak" height="185" />
+
+<br /><br />
+
+<img src="https://github-readme-activity-graph.vercel.app/graph?username=Chaosnico9000&theme=tokyo-night&hide_border=true&bg_color=1a1b27&color=818cf8&line=6366f1&point=ffffff&area=true" alt="Contribution activity graph" width="98%" />
 
 </div>
 
 ---
-
-## 📊 GitHub Statistiken
 
 <div align="center">
-
-  <!-- Profil-Details -->
-  <img 
-    src="https://github-profile-summary-cards.vercel.app/api/cards/profile-details?username=Chaosnico9000&theme=tokyonight"
-    alt="GitHub Profil Details"
-    width="100%"
-  />
-  <br /><br />
-
-  <!-- Sprachen & Commit-Sprachen -->
-  <img 
-    src="https://github-profile-summary-cards.vercel.app/api/cards/repos-per-language?username=Chaosnico9000&theme=tokyonight"
-    alt="Repos nach Sprache"
-    height="180"
-  />
-  <img 
-    src="https://github-profile-summary-cards.vercel.app/api/cards/most-commit-language?username=Chaosnico9000&theme=tokyonight"
-    alt="Meiste Commits nach Sprache"
-    height="180"
-  />
-  <br /><br />
-
-  <!-- Stats & produktivste Zeit -->
-  <img 
-    src="https://github-profile-summary-cards.vercel.app/api/cards/stats?username=Chaosnico9000&theme=tokyonight"
-    alt="GitHub Stats"
-    height="180"
-  />
-  <img 
-    src="https://github-profile-summary-cards.vercel.app/api/cards/productive-time?username=Chaosnico9000&theme=tokyonight"
-    alt="Produktivste Zeiten"
-    height="180"
-  />
-  <br /><br />
-
-  <!-- GitHub Trophies -->
-  <img 
-    src="https://github-profile-trophy.vercel.app/?username=Chaosnico9000&theme=tokyonight&no-frame=true&no-bg=true&margin-w=10"
-    alt="GitHub Trophies"
-    width="100%"
-  />
-  <br /><br />
-
-  <!-- Aktivitätsgraph -->
-  <img 
-    src="https://github-readme-activity-graph.vercel.app/graph?username=Chaosnico9000&theme=tokyo-night"
-    alt="GitHub Aktivitätsgraph"
-    width="100%"
-  />
-
+  <i>I build things I need — and things I might need someday.</i>
 </div>
-
----
-
-## 🧩 Woran ich aktuell arbeite
-
-- Hintergrund-Synchronisation & Statistik-Analyse für BizTalkMonitoring.Core  
-- Erweiterter PluginTester (Hot Reload, Auto-Rebuild, UI-Frontend)  
-- Optimierung von GitHub Actions Workflows (Dependency Scanning, Service-Deployment)  
-- Unity 2D Lernprojekt  
-- Minecraft Performance-Profiling (ZGC, Chunk-Simulation)  
-- Erweiterung des IR9 AdminPanels  
-
----
-
-## 🏅 Badges &amp; Technologien
-
-<div>
-
-  <img src="https://img.shields.io/badge/.NET-9.0-blue?style=flat-square" alt=".NET 9" />
-  <img src="https://img.shields.io/badge/Blazor-Server-purple?style=flat-square" alt="Blazor Server" />
-  <img src="https://img.shields.io/badge/MudBlazor-UI-blueviolet?style=flat-square" alt="MudBlazor" />
-  <img src="https://img.shields.io/badge/SQL-Server-red?style=flat-square" alt="SQL Server" />
-  <img src="https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-orange?style=flat-square" alt="CI/CD" />
-  <img src="https://img.shields.io/badge/Server-Admin-green?style=flat-square" alt="Server Admin" />
-  <img src="https://img.shields.io/badge/EFCore-ORM-yellow?style=flat-square" alt="EF Core" />
-
-</div>
-
----
-
-## 📬 Kontakt
-
-- Discord: <strong>Chaosnico9000</strong>  
-- GitHub Issues &amp; Discussions: einfach reinwerfen  
-- Wenn’s dringend ist: Kaffee hilft meistens mehr als Panik  
-
----
-
-> Ich baue Dinge, die ich brauche – und Dinge, die ich irgendwann brauchen *könnte*.  
-> Und zwischendurch repariere ich meine eigenen Deployments, wenn sie es wieder übertrieben haben.
