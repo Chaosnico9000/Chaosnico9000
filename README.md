@@ -30,16 +30,16 @@ and **Java**. I like software that's lightweight, well tested, and does exactly 
   </tr>
   <tr>
     <td width="50%" valign="top">
-      <h3>MFH Buddy</h3>
-      <p><sub>PRIVATE</sub></p>
-      <p>A companion app built from switchable tools: record and plan hikes with GPX and live navigation, keep a nutrition diary and plan food for the next tour. Self-hosted in Docker.</p>
-      <p><code>Next.js 16</code> <code>Hono</code> <code>Drizzle</code> <code>Docker</code></p>
-    </td>
-    <td width="50%" valign="top">
       <h3>Maßlos</h3>
       <p><sub>PRIVATE · <a href="https://chaosnico9000.github.io/Masslos/">web app</a></sub></p>
       <p>A unit converter that takes input the way you'd ask (<code>100 km/h in m/s</code>) and checks every conversion by physical dimension. Dependency-free core, CLI as a single binary, web UI.</p>
       <p><code>TypeScript</code> <code>Bun</code> <code>React</code></p>
+    </td>
+    <td width="50%" valign="top">
+      <h3>FRAME</h3>
+      <p><sub>PRIVATE</sub></p>
+      <p>A large language model series built from scratch (Spin · Ferrite · Dynamo): custom tokenizers, training pipeline and chat, from a CPU-friendly ~7M model to larger GPU models.</p>
+      <p><code>Python</code> <code>LLM</code> <code>Tokenizers</code></p>
     </td>
   </tr>
   <tr>
@@ -54,20 +54,6 @@ and **Java**. I like software that's lightweight, well tested, and does exactly 
       <p><sub>PUBLIC</sub></p>
       <p>A server-side Fabric mod for Minecraft 26.3 that ticks Overworld, Nether and End in parallel on worker threads, with cross-dimension work deferred safely to the server thread.</p>
       <p><code>Java 25</code> <code>Fabric</code> <code>Concurrency</code></p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top">
-      <h3><a href="https://github.com/Chaosnico9000/VERA">VERA</a></h3>
-      <p><sub>PUBLIC</sub></p>
-      <p>A cross-platform time-tracking app (Android / iOS / macOS) built with .NET MAUI and an ASP.NET Core 10 backend, with gamification, biometric auth and JWT refresh rotation.</p>
-      <p><code>.NET MAUI</code> <code>ASP.NET Core</code> <code>SQLite</code> <code>JWT</code></p>
-    </td>
-    <td width="50%" valign="top">
-      <h3>FRAME</h3>
-      <p><sub>PRIVATE</sub></p>
-      <p>A large language model series built from scratch (Spin · Ferrite · Dynamo): custom tokenizers, training pipeline and chat, from a CPU-friendly ~7M model to larger GPU models.</p>
-      <p><code>Python</code> <code>LLM</code> <code>Tokenizers</code></p>
     </td>
   </tr>
 </table>
